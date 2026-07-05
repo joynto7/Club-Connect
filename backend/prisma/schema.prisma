@@ -1,0 +1,630 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                            String    @id @default(uuid())
+  email                         String    @unique
+  password                      String
+  name                          String
+  role                          Role      @default(STUDENT)
+  // Profile fields (UC-1.4, UC-1.5)
+  department                    String?
+  year                          String?
+  interests                     String[]
+  avatarUrl                     String?
+  // Account status (UC-7.2, UC-8.3)
+  isSuspended                   Boolean   @default(false)
+  suspendedReason               String?
+  emailVerified                 Boolean   @default(false)
+  emailVerificationToken        String?
+  emailVerificationTokenExpires DateTime?
+  passwordResetToken            String?
+  passwordResetTokenExpires     DateTime?
+  refreshToken                  String?
+  refreshTokenExpires           DateTime?
+  // Security — login attempt tracking (UC-1.2, Phase 9)
+  loginAttempts                 Int       @default(0)
+  lockedUntil                   DateTime?
+  clubsCreated                  Club[]               @relation("ClubCreatedBy")
+  eventsCreated                 Event[]              @relation("EventCreatedBy")
+  attendances                   EventAttendance[]    @relation("UserAttendances")
+  memberships                   ClubMembership[]
+  venueBookings                 VenueBooking[]       @relation("VenueBookingRequester")
+  resourceBookings              ResourceBooking[]    @relation("ResourceBookingRequester")
+  notifications                 Notification[]
+  notificationPreference        NotificationPreference?
+  announcements                 Announcement[]       @relation("AnnouncementCreator")
+  feedbacks                     EventFeedback[]
+  contentReportsSubmitted       ContentReport[]      @relation("ReportSubmitter")
+  contentReportsResolved        ContentReport[]      @relation("ReportResolver")
+  sessions                      Session[]
+  reports                       Report[]
+  // U4 — Social
+  clubPosts                     ClubPost[]           @relation("ClubPostAuthor")
+  clubPostComments              ClubPostComment[]    @relation("ClubPostCommentAuthor")
+  clubPostReactions             ClubPostReaction[]
+  eventQuestions                EventQuestion[]      @relation("EventQuestionAuthor")
+  eventQuestionAnswers          EventQuestion[]      @relation("QuestionAnswerer")
+  clubFollows                   ClubFollow[]
+  // U5 — Gamification
+  userPoints                    UserPoints?
+  achievements                  UserAchievement[]
+  // U6 — Event reminders
+  eventReminders                EventReminder[]
+  // U9 — Push subscriptions
+  pushSubscriptions             PushSubscription[]
+  // U10 — 2FA
+  twoFactorSecret               String?
+  twoFactorEnabled              Boolean              @default(false)
+  // U12 — Google OAuth
+  googleId                      String?              @unique
+  // U10 — Audit & Digest
+  auditLogs                     AuditLog[]
+  emailDigestSubscription       EmailDigestSubscription?
+  // U11 — Payments & Budget
+  payments                      Payment[]
+  budgetTransactions            BudgetTransaction[]  @relation("BudgetTransactionCreator")
+  createdAt                     DateTime             @default(now())
+  updatedAt                     DateTime             @updatedAt
+}
+
+// UC-8.3 — Active session tracking
+model Session {
+  id         String   @id @default(uuid())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  tokenHash  String   @unique
+  userAgent  String?
+  ipAddress  String?
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Club {
+  id           String      @id @default(uuid())
+  name         String
+  slug         String      @unique
+  description  String?
+  category     String      @default("General")
+  logoUrl      String?
+  bannerUrl    String?
+  contactEmail String?
+  phone        String?
+  socialLinks  Json        @default("{}")
+  tags         String[]
+  status       ClubStatus  @default(PENDING)
+  approvalNote String?
+  createdBy    User        @relation("ClubCreatedBy", fields: [createdById], references: [id])
+  createdById  String
+  events       Event[]
+  memberships  ClubMembership[]
+  venueBookings    VenueBooking[]
+  resourceBookings ResourceBooking[]
+  announcements    Announcement[]
+  // U4 — Social
+  posts        ClubPost[]
+  followers    ClubFollow[]
+  // U11 — Budget
+  budget       ClubBudget?
+  // U12 — Integrations
+  integrations ClubIntegration[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model ClubMembership {
+  id        String           @id @default(uuid())
+  club      Club             @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  clubId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  role      ClubRole         @default(MEMBER)
+  status    MembershipStatus @default(PENDING)
+  message   String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([clubId, userId])
+}
+
+model Event {
+  id                   String            @id @default(uuid())
+  title                String
+  description          String?
+  location             String
+  category             String            @default("General")
+  tags                 String[]
+  status               EventStatus       @default(PENDING_APPROVAL)
+  registrationDeadline DateTime?
+  posterUrl            String?
+  contactPerson        String?
+  approvalNote         String?
+  maxWaitlist          Int?
+  // U6 — Virtual events
+  isVirtual            Boolean           @default(false)
+  meetingUrl           String?
+  // U8 — iCal export token
+  icsToken             String            @unique @default(uuid())
+  // U11 — Paid tickets
+  isPaid               Boolean           @default(false)
+  ticketPrice          Int?
+  club                 Club              @relation(fields: [clubId], references: [id])
+  clubId               String
+  createdBy            User              @relation("EventCreatedBy", fields: [createdById], references: [id])
+  createdById          String
+  startsAt             DateTime
+  endsAt               DateTime?
+  capacity             Int?
+  attendees            EventAttendance[] @relation("EventAttendees")
+  venueBookings        VenueBooking[]
+  resourceBookings     ResourceBooking[]
+  feedbacks            EventFeedback[]
+  // U4 — Social
+  questions            EventQuestion[]
+  // U6 — Reminders
+  reminders            EventReminder[]
+  // U11 — Payments
+  payments             Payment[]
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+}
+
+model EventAttendance {
+  id          String                @id @default(uuid())
+  event       Event                 @relation("EventAttendees", fields: [eventId], references: [id])
+  eventId     String
+  user        User                  @relation("UserAttendances", fields: [userId], references: [id])
+  userId      String
+  status      EventAttendanceStatus @default(REGISTERED)
+  isWaitlisted Boolean              @default(false)
+  checkedIn   Boolean               @default(false)
+  checkedInAt DateTime?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@unique([eventId, userId], name: "eventId_userId")
+}
+
+enum EventAttendanceStatus {
+  REGISTERED
+  CANCELLED
+}
+
+enum EventStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ClubStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  REJECTED
+}
+
+enum ClubRole {
+  MEMBER
+  COORDINATOR
+  PRESIDENT
+}
+
+enum MembershipStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum Role {
+  STUDENT
+  CLUB_OFFICER
+  UNIVERSITY_ADMIN
+  SYSTEM_ADMIN
+}
+
+model Venue {
+  id          String         @id @default(uuid())
+  name        String
+  location    String
+  description String?
+  capacity    Int
+  facilities  String[]
+  images      String[]
+  isActive    Boolean        @default(true)
+  bookings    VenueBooking[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model VenueBooking {
+  id            String        @id @default(uuid())
+  venue         Venue         @relation(fields: [venueId], references: [id])
+  venueId       String
+  event         Event?        @relation(fields: [eventId], references: [id])
+  eventId       String?
+  club          Club?         @relation(fields: [clubId], references: [id])
+  clubId        String?
+  requestedBy   User          @relation("VenueBookingRequester", fields: [requestedById], references: [id])
+  requestedById String
+  startTime     DateTime
+  endTime       DateTime
+  purpose       String
+  status        BookingStatus @default(PENDING)
+  adminNote     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Resource {
+  id          String            @id @default(uuid())
+  name        String
+  category    String            @default("General")
+  description String?
+  quantity    Int               @default(1)
+  isActive    Boolean           @default(true)
+  bookings    ResourceBooking[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model ResourceBooking {
+  id            String        @id @default(uuid())
+  resource      Resource      @relation(fields: [resourceId], references: [id])
+  resourceId    String
+  event         Event?        @relation(fields: [eventId], references: [id])
+  eventId       String?
+  club          Club?         @relation(fields: [clubId], references: [id])
+  clubId        String?
+  requestedBy   User          @relation("ResourceBookingRequester", fields: [requestedById], references: [id])
+  requestedById String
+  quantity      Int           @default(1)
+  startTime     DateTime
+  endTime       DateTime
+  purpose       String
+  status        BookingStatus @default(PENDING)
+  adminNote     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+enum BookingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum NotificationType {
+  EVENT_APPROVED
+  EVENT_REJECTED
+  EVENT_CANCELLED
+  EVENT_RSVP
+  EVENT_WAITLIST_PROMOTED
+  EVENT_REMINDER
+  CLUB_APPROVED
+  CLUB_REJECTED
+  MEMBERSHIP_APPROVED
+  MEMBERSHIP_REJECTED
+  BOOKING_APPROVED
+  BOOKING_REJECTED
+  ANNOUNCEMENT
+  PAYMENT_SUCCEEDED
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  link      String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+}
+
+model Announcement {
+  id          String    @id @default(uuid())
+  title       String
+  content     String
+  priority    String    @default("NORMAL")
+  club        Club?     @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  clubId      String?
+  createdBy   User      @relation("AnnouncementCreator", fields: [createdById], references: [id])
+  createdById String
+  publishedAt DateTime  @default(now())
+  scheduledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model NotificationPreference {
+  id             String   @id @default(uuid())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String   @unique
+  eventUpdates   Boolean  @default(true)
+  clubUpdates    Boolean  @default(true)
+  bookingUpdates Boolean  @default(true)
+  announcements  Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model EventFeedback {
+  id              String   @id @default(uuid())
+  event           Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId         String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  rating          Int
+  comment         String?
+  categoryRatings Json     @default("{}")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([eventId, userId], name: "eventId_userId")
+}
+
+// UC-7.5, UC-11.3 — Content moderation
+model ContentReport {
+  id           String       @id @default(uuid())
+  reporter     User         @relation("ReportSubmitter", fields: [reporterId], references: [id])
+  reporterId   String
+  targetType   String       // "EVENT" | "CLUB" | "ANNOUNCEMENT" | "USER"
+  targetId     String
+  reason       String
+  description  String?
+  status       ReportStatus @default(PENDING)
+  resolvedBy   User?        @relation("ReportResolver", fields: [resolvedById], references: [id])
+  resolvedById String?
+  resolvedNote String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+// UC-7.6 — System configuration
+model SystemConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  label     String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
+// UC-10.1 — Report history
+model Report {
+  id            String   @id @default(uuid())
+  type          String   // MEMBERS | ATTENDANCE | EVENTS | SYSTEM
+  format        String   // CSV | PDF
+  name          String
+  params        Json     @default("{}")
+  generatedBy   User     @relation(fields: [generatedById], references: [id])
+  generatedById String
+  createdAt     DateTime @default(now())
+}
+
+// ── U4 — Social & Community ────────────────────────────────────────────────
+
+model ClubPost {
+  id        String             @id @default(uuid())
+  club      Club               @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  clubId    String
+  author    User               @relation("ClubPostAuthor", fields: [authorId], references: [id])
+  authorId  String
+  title     String
+  content   String
+  isPinned  Boolean            @default(false)
+  comments  ClubPostComment[]
+  reactions ClubPostReaction[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+}
+
+model ClubPostComment {
+  id        String   @id @default(uuid())
+  post      ClubPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String
+  author    User     @relation("ClubPostCommentAuthor", fields: [authorId], references: [id])
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ClubPostReaction {
+  id        String   @id @default(uuid())
+  post      ClubPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  emoji     String   @default("👍")
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+}
+
+model EventQuestion {
+  id           String   @id @default(uuid())
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId      String
+  author       User     @relation("EventQuestionAuthor", fields: [authorId], references: [id])
+  authorId     String
+  question     String
+  upvotes      Int      @default(0)
+  isAnswered   Boolean  @default(false)
+  answer       String?
+  answeredBy   User?    @relation("QuestionAnswerer", fields: [answeredById], references: [id])
+  answeredById String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model ClubFollow {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  clubId    String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, clubId])
+}
+
+// ── U5 — Gamification ─────────────────────────────────────────────────────────
+
+model UserPoints {
+  id           String             @id @default(uuid())
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String             @unique
+  points       Int                @default(0)
+  level        Int                @default(1)
+  transactions PointTransaction[]
+  updatedAt    DateTime           @updatedAt
+}
+
+model PointTransaction {
+  id           String     @id @default(uuid())
+  userPoints   UserPoints @relation(fields: [userPointsId], references: [id])
+  userPointsId String
+  delta        Int
+  reason       String
+  createdAt    DateTime   @default(now())
+}
+
+model Achievement {
+  slug        String            @id
+  name        String
+  description String
+  icon        String
+  unlockedBy  UserAchievement[]
+}
+
+model UserAchievement {
+  id              String      @id @default(uuid())
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  achievement     Achievement @relation(fields: [achievementSlug], references: [slug])
+  achievementSlug String
+  unlockedAt      DateTime    @default(now())
+
+  @@unique([userId, achievementSlug])
+}
+
+// ── U6 — Smart Event Experience ───────────────────────────────────────────────
+
+model EventReminder {
+  id            String   @id @default(uuid())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId       String
+  minutesBefore Int
+  sent          Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@unique([userId, eventId, minutesBefore])
+}
+// ── U9 — Push Subscriptions ───────────────────────────────────────────────────
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+
+// ── U10 — Advanced Admin & Audit ──────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actor      User     @relation(fields: [actorId], references: [id])
+  actorId    String
+  action     String
+  targetType String
+  targetId   String
+  details    Json     @default("{}")
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+}
+
+model EmailDigestSubscription {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @unique
+  frequency String   @default("WEEKLY")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── U11 — Payments & Institutional ───────────────────────────────────────────
+
+model Payment {
+  id              String   @id @default(uuid())
+  user            User     @relation(fields: [userId], references: [id])
+  userId          String
+  event           Event    @relation(fields: [eventId], references: [id])
+  eventId         String
+  stripePaymentId String   @unique
+  amount          Int
+  currency        String   @default("usd")
+  status          String   @default("pending")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ClubBudget {
+  id             String             @id @default(uuid())
+  club           Club               @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  clubId         String             @unique
+  totalAllocated Int                @default(0)
+  fiscalYear     String             @default("2026")
+  transactions   BudgetTransaction[]
+  updatedAt      DateTime           @updatedAt
+}
+
+model BudgetTransaction {
+  id          String     @id @default(uuid())
+  budget      ClubBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  budgetId    String
+  description String
+  amount      Int
+  type        String
+  receiptUrl  String?
+  createdBy   User       @relation("BudgetTransactionCreator", fields: [createdById], references: [id])
+  createdById String
+  createdAt   DateTime   @default(now())
+}
+
+// ── U12 — Integrations ────────────────────────────────────────────────────────
+
+model ClubIntegration {
+  id         String   @id @default(uuid())
+  club       Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  clubId     String
+  type       String   // "SLACK" | "DISCORD"
+  webhookUrl String
+  events     String[] // e.g. ["NEW_EVENT", "NEW_MEMBER", "ANNOUNCEMENT"]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([clubId, type])
+}

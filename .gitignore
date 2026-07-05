@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.next/
+out/
+
+# Environment files — NEVER commit these
+.env
+.env.local
+.env.production
+.env.production.local
+.env.development.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads (use S3 in production)
+public/uploads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+
+# Vercel
+.vercel
+
+# Local IDE / agent config
+.claude/
+
+# User uploads (use S3 in production)
+backend/public/uploads/

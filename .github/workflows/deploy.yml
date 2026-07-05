@@ -1,0 +1,121 @@
+name: Build, Test & Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  # ── 1. Type-check & build backend ──────────────────────────────────────────
+  backend:
+    name: Backend — type check & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: cd backend && npm ci
+
+      - name: Generate Prisma client
+        run: cd backend && npx prisma generate
+
+      - name: Type check
+        run: cd backend && npx tsc --noEmit
+
+      - name: Build
+        run: cd backend && npm run build
+
+  # ── 2. Type-check & build frontend ─────────────────────────────────────────
+  frontend:
+    name: Frontend — type check & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: cd frontend && npm ci
+
+      - name: Type check
+        run: cd frontend && npx tsc --noEmit
+
+      - name: Build
+        run: cd frontend && npm run build
+        env:
+          # Provide placeholder values so Next.js build doesn't fail
+          NEXT_PUBLIC_API_BASE_URL: https://api.placeholder.com
+          NEXT_PUBLIC_API_URL: https://api.placeholder.com
+          NEXT_PUBLIC_SOCKET_URL: https://api.placeholder.com
+
+  # ── 3. Deploy (only on push to main, after both checks pass) ───────────────
+  deploy:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: cd backend && npm ci
+
+      # Run DB migrations against production before deploying the new code
+      - name: Run database migrations
+        run: cd backend && npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      # Deploy frontend to Vercel
+      - name: Deploy frontend to Vercel
+        run: |
+          npm install -g vercel@latest
+          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+          vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: frontend
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      # Trigger Railway redeploy via deploy hook URL
+      - name: Deploy backend to Railway
+        run: curl -s -X POST "${{ secrets.RAILWAY_DEPLOY_HOOK_URL }}"
+
+      # Wait for backend health check to pass
+      - name: Verify deployment
+        run: |
+          echo "Waiting for backend to come up..."
+          for i in {1..12}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.BACKEND_URL }}/health")
+            if [ "$STATUS" = "200" ]; then
+              echo "Backend is healthy (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $STATUS — retrying in 10s"
+            sleep 10
+          done
+          echo "Backend did not become healthy in time"
+          exit 1

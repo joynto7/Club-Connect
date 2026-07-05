@@ -1,0 +1,65 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: clubadmin
+      POSTGRES_PASSWORD: localdevpassword
+      POSTGRES_DB: club_connect
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clubadmin -d club_connect"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      target: production
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://clubadmin:localdevpassword@postgres:5432/club_connect
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+    ports:
+      - "5001:5001"
+
+  frontend:
+    build:
+      context: ./frontend
+      target: production
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:5001
+        NEXT_PUBLIC_API_URL: http://localhost:5001
+        NEXT_PUBLIC_SOCKET_URL: http://localhost:5001
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:

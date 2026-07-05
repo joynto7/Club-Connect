@@ -1,0 +1,173 @@
+@import "tailwindcss";
+
+/* ── Class-based dark mode for Tailwind v4 ─────────────── */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+  color: rgb(15 23 42);
+  background: rgb(255 255 255);
+
+  --color-surface: 255 255 255;
+  --color-surface-strong: 247 250 252;
+  --color-surface-muted: 248 250 252;
+  --color-border: 226 232 240;
+  --color-shadow: 15 23 42 / 0.08;
+
+  --color-text-primary: 15 23 42;
+  --color-text-secondary: 71 85 105;
+  --color-text-muted: 100 116 139;
+
+  --color-primary: 20 184 166;
+  --color-primary-foreground: 255 255 255;
+  --color-secondary: 79 70 229;
+  --color-secondary-foreground: 255 255 255;
+  --color-accent: 236 72 153;
+  --color-info: 14 165 233;
+  --color-success: 16 185 129;
+  --color-danger: 239 68 68;
+  --color-warning: 251 191 36;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1.25rem;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 10px 30px rgba(15, 23, 42, 0.1);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@theme inline {
+  --surface: rgb(var(--color-surface));
+  --surface-strong: rgb(var(--color-surface-strong));
+  --surface-muted: rgb(var(--color-surface-muted));
+  --border: rgb(var(--color-border));
+  --text-primary: rgb(var(--color-text-primary));
+  --text-secondary: rgb(var(--color-text-secondary));
+  --text-muted: rgb(var(--color-text-muted));
+  --primary: rgb(var(--color-primary));
+  --primary-foreground: rgb(var(--color-primary-foreground));
+  --secondary: rgb(var(--color-secondary));
+  --secondary-foreground: rgb(var(--color-secondary-foreground));
+  --accent: rgb(var(--color-accent));
+  --info: rgb(var(--color-info));
+  --success: rgb(var(--color-success));
+  --danger: rgb(var(--color-danger));
+  --warning: rgb(var(--color-warning));
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1.25rem;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 10px 30px rgba(15, 23, 42, 0.1);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* ── Dark mode CSS overrides ───────────────────────────────────────────────
+   .dark ancestor raises specificity to (0,2,0) beating Tailwind's (0,1,0),
+   so no !important needed. Covers common patterns without editing every file.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Backgrounds */
+.dark .bg-white          { background-color: #18181b; }
+.dark .bg-gray-50        { background-color: #09090b; }
+.dark .bg-gray-100       { background-color: #27272a; }
+.dark .bg-gray-200       { background-color: #3f3f46; }
+.dark .bg-\[\#F8F9FA\]   { background-color: #09090b; }
+.dark .bg-\[\#FDF9F1\]   { background-color: #18181b; }
+.dark .bg-\[\#FAFAFA\]   { background-color: #27272a; }
+
+/* Smooth page transitions */
+.page-fade-enter  { opacity: 0; transform: translateY(8px); }
+.page-fade-active { opacity: 1; transform: translateY(0); transition: opacity 0.2s ease, transform 0.2s ease; }
+.dark .bg-blue-50        { background-color: rgba(59,130,246,0.1); }
+.dark .bg-purple-50      { background-color: rgba(168,85,247,0.1); }
+.dark .bg-green-50       { background-color: rgba(34,197,94,0.1);  }
+.dark .bg-red-50         { background-color: rgba(239,68,68,0.1);  }
+.dark .bg-yellow-50      { background-color: rgba(234,179,8,0.1);  }
+.dark .bg-orange-50      { background-color: rgba(249,115,22,0.1); }
+.dark .bg-teal-50        { background-color: rgba(20,184,166,0.1); }
+.dark .bg-indigo-50      { background-color: rgba(99,102,241,0.1); }
+
+/* Text */
+.dark .text-gray-900     { color: #fafafa; }
+.dark .text-gray-800     { color: #f4f4f5; }
+.dark .text-gray-700     { color: #e4e4e7; }
+.dark .text-gray-600     { color: #d4d4d8; }
+.dark .text-gray-500     { color: #a1a1aa; }
+.dark .text-gray-400     { color: #71717a; }
+.dark .text-gray-300     { color: #52525b; }
+
+/* Borders */
+.dark .border-gray-100   { border-color: #27272a; }
+.dark .border-gray-200   { border-color: #3f3f46; }
+.dark .border-gray-300   { border-color: #52525b; }
+
+/* Hover backgrounds */
+.dark .hover\:bg-gray-50:hover  { background-color: #27272a; }
+.dark .hover\:bg-gray-100:hover { background-color: #3f3f46; }
+.dark .hover\:bg-red-50:hover   { background-color: rgba(239,68,68,0.12); }
+
+/* Shadows — soften in dark mode */
+.dark .shadow-sm  { box-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+.dark .shadow-md  { box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+.dark .shadow-lg  { box-shadow: 0 8px 30px rgba(0,0,0,0.6); }
+
+/* Inputs & form controls */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.dark textarea,
+.dark select {
+  background-color: #27272a;
+  border-color: #3f3f46;
+  color: #fafafa;
+}
+.dark input::placeholder,
+.dark textarea::placeholder { color: #71717a; }
+
+/* Scrollbars */
+.dark ::-webkit-scrollbar-track { background: #09090b; }
+.dark ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-height: 100%;
+    margin: 0;
+    font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.6;
+    background: var(--surface);
+    color: var(--text-primary);
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: rgb(var(--color-primary) / 0.25);
+    color: var(--primary-foreground);
+  }
+
+  a {
+    color: var(--primary);
+    text-decoration: none;
+  }
+
+  a:hover,
+  a:focus-visible {
+    text-decoration: underline;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+}
