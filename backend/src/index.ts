@@ -56,7 +56,6 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   next();
 });
 
-// Stripe webhook must receive raw body — mount before express.json()
 app.use("/payments", paymentRoutes);
 app.use(express.json({ limit: "10mb" }));
 app.use("/uploads", express.static(path.join(__dirname, "../../public/uploads")));
@@ -79,8 +78,11 @@ app.use("/feed", feedRoutes);
 app.use("/leaderboard", leaderboardRoutes);
 app.use("/ai", aiRoutes);
 app.use("/clubs/:id/integrations", integrationRoutes);
-app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, { customSiteTitle: "Club Connect API" }));
-app.get("/api/docs.json", (_req, res) => res.json(swaggerSpec));
+// Swagger docs expose the full API surface — dev only, never public in production.
+if (process.env.NODE_ENV !== "production") {
+  app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, { customSiteTitle: "Club Connect API" }));
+  app.get("/api/docs.json", (_req, res) => res.json(swaggerSpec));
+}
 
 // ── Health checks ─────────────────────────────────────────────────────────────
 app.get("/health", (_req, res) => res.send("OK"));
