@@ -6,7 +6,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { getAuthState } from "@/lib/tokenStorage";
 import { getMyHistory, getMyClubs } from "@/lib/auth";
-import { getAdminStats } from "@/lib/admin";
+import { getAdminStats, getSystemMonitor, type SystemMonitorStats } from "@/lib/admin";
 import { approveEvent, rejectEvent } from "@/lib/events";
 import { approveClub, rejectClub } from "@/lib/clubs";
 import { useSocket } from "@/hooks/useSocket";
@@ -23,6 +23,7 @@ import {
   Calendar, Users2, History, ArrowRight, Clock, MapPin,
   Users, Building2, Activity, AlertCircle, CheckCircle,
   UserCheck, Package, Megaphone, Trophy, Star,
+  ShieldOff, UserX, ShieldCheck,
 } from "lucide-react";
 import AnimatedCounter from "@/components/shared/AnimatedCounter";
 import EmptyState from "@/components/shared/EmptyState";
@@ -500,7 +501,7 @@ function OfficerDashboard({ user }: { user: UserInfo }) {
   );
 }
 
-// ── Admin Dashboard ──────────────────────────────────────────────────────────
+// ── University Admin Dashboard ───────────────────────────────────────────────
 
 const activityIcons: Record<string, React.ReactNode> = {
   CLUB_CREATED:  <Building2 size={16} />,
@@ -514,7 +515,7 @@ const activityAccent: Record<string, string> = {
   USER_JOINED:   "bg-blue-50 text-blue-500",
 };
 
-function AdminDashboard({ user }: { user: UserInfo }) {
+function UniversityAdminDashboard({ user }: { user: UserInfo }) {
   const socket = useSocket();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -936,6 +937,62 @@ function AdminDashboard({ user }: { user: UserInfo }) {
   );
 }
 
+// ── System Admin Dashboard ────────────────────────────────────────────────────
+
+function SystemAdminDashboard({ user }: { user: UserInfo }) {
+  const [monitor, setMonitor] = useState<SystemMonitorStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getSystemMonitor().then(setMonitor).finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="space-y-8">
+      <UniversityAdminDashboard user={user} />
+
+      <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-sm p-6">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-bold text-gray-900">System Monitor</h2>
+          <Link href="/admin/system-monitor" className="text-xs font-semibold text-[#EBA814] hover:underline flex items-center gap-1">
+            Full report <ArrowRight size={12} />
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <StatCard
+            icon={<Activity size={22} />}
+            label="Active Sessions"
+            value={loading ? "—" : monitor?.activeSessions ?? 0}
+            href="/admin/system-monitor"
+            accent="blue"
+          />
+          <StatCard
+            icon={<ShieldOff size={22} />}
+            label="Locked Out"
+            value={loading ? "—" : monitor?.lockedOutAccounts ?? 0}
+            href="/admin/system-monitor"
+            accent={monitor?.lockedOutAccounts ? "red" : "green"}
+          />
+          <StatCard
+            icon={<UserX size={22} />}
+            label="Suspended"
+            value={loading ? "—" : monitor?.suspendedAccounts ?? 0}
+            href="/admin/system-monitor"
+            accent={monitor?.suspendedAccounts ? "red" : "green"}
+          />
+          <StatCard
+            icon={<ShieldCheck size={22} />}
+            label="2FA Adoption"
+            value={loading ? "—" : `${Math.round((monitor?.twoFactorAdoption ?? 0) * 100)}%`}
+            href="/admin/system-monitor"
+            accent="purple"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Page entry point ─────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -948,8 +1005,11 @@ export default function DashboardPage() {
 
   if (!user) return null;
 
-  if (user.role === "UNIVERSITY_ADMIN" || user.role === "SYSTEM_ADMIN") {
-    return <AdminDashboard user={user} />;
+  if (user.role === "SYSTEM_ADMIN") {
+    return <SystemAdminDashboard user={user} />;
+  }
+  if (user.role === "UNIVERSITY_ADMIN") {
+    return <UniversityAdminDashboard user={user} />;
   }
   if (user.role === "CLUB_OFFICER") {
     return <OfficerDashboard user={user} />;
