@@ -64,10 +64,14 @@ function getNavGroups(role: string): NavGroup[] {
   ];
 
   const adminItems: NavItem[] = [];
+  if (hasCapability(role, "viewDashboardStats")) {
+    adminItems.push({ label: "Admin Panel", href: "/admin", icon: <LayoutGrid size={18} />, exact: true });
+  }
   if (hasCapability(role, "viewAnalytics")) {
-    adminItems.push({ label: "Admin Panel", href: "/admin",         icon: <LayoutGrid size={18} />, exact: true });
-    adminItems.push({ label: "Analytics",   href: "/analytics",     icon: <BarChart2 size={18} /> });
-    adminItems.push({ label: "Reports",     href: "/admin/reports", icon: <FileText size={18} /> });
+    adminItems.push({ label: "Analytics", href: "/analytics", icon: <BarChart2 size={18} /> });
+  }
+  if (hasCapability(role, "viewReports")) {
+    adminItems.push({ label: "Reports", href: "/admin/reports", icon: <FileText size={18} /> });
   }
   if (hasCapability(role, "manageUsers")) {
     adminItems.push({ label: "Users", href: "/admin/users", icon: <UserCog size={18} /> });
