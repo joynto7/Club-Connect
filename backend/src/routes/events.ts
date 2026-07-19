@@ -1,7 +1,6 @@
 import express from "express";
-import { Role } from "@prisma/client";
 import { authenticateJWT, optionalAuth } from "../middleware/authMiddleware.ts";
-import { requireRole } from "../middleware/rbacMiddleware.ts";
+import { requireCapability } from "../middleware/rbacMiddleware.ts";
 import {
   listEvents,
   getEvent,
@@ -47,13 +46,13 @@ router.delete("/:id", authenticateJWT, cancelEvent);
 router.post(
   "/:id/approve",
   authenticateJWT,
-  requireRole([Role.UNIVERSITY_ADMIN, Role.SYSTEM_ADMIN]),
+  requireCapability("approveEvents"),
   approveEvent
 );
 router.post(
   "/:id/reject",
   authenticateJWT,
-  requireRole([Role.UNIVERSITY_ADMIN, Role.SYSTEM_ADMIN]),
+  requireCapability("approveEvents"),
   rejectEvent
 );
 

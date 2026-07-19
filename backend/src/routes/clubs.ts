@@ -1,7 +1,7 @@
 import express from "express";
 import { Role } from "@prisma/client";
 import { authenticateJWT, optionalAuth } from "../middleware/authMiddleware.ts";
-import { requireRole } from "../middleware/rbacMiddleware.ts";
+import { requireRole, requireCapability } from "../middleware/rbacMiddleware.ts";
 import {
   listClubs,
   getClub,
@@ -49,8 +49,8 @@ router.post("/",                                    authenticateJWT, createClub)
 router.put("/:id",                                  authenticateJWT, updateClub);
 
 // Admin-only
-router.post("/:id/approve",  authenticateJWT, requireRole([Role.UNIVERSITY_ADMIN, Role.SYSTEM_ADMIN]), approveClub);
-router.post("/:id/reject",   authenticateJWT, requireRole([Role.UNIVERSITY_ADMIN, Role.SYSTEM_ADMIN]), rejectClub);
+router.post("/:id/approve",  authenticateJWT, requireCapability("approveClubs"), approveClub);
+router.post("/:id/reject",   authenticateJWT, requireCapability("approveClubs"), rejectClub);
 router.delete("/:id",        authenticateJWT, requireRole([Role.UNIVERSITY_ADMIN, Role.SYSTEM_ADMIN]), deactivateClub);
 
 // Membership management

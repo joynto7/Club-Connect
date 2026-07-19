@@ -1,7 +1,6 @@
 import express from "express";
-import { Role } from "@prisma/client";
 import { authenticateJWT } from "../middleware/authMiddleware.ts";
-import { requireRole } from "../middleware/rbacMiddleware.ts";
+import { requireCapability } from "../middleware/rbacMiddleware.ts";
 import {
   listReports,
   generateReport,
@@ -12,13 +11,13 @@ import {
 
 const router = express.Router();
 
-const adminOnly = [authenticateJWT, requireRole([Role.UNIVERSITY_ADMIN, Role.SYSTEM_ADMIN])];
+const canViewReports = [authenticateJWT, requireCapability("viewReports")];
 
 // UC-10.1 — Report management
-router.get("/",                   ...adminOnly, listReports);
-router.post("/generate",          ...adminOnly, generateReport);
-router.get("/:id/download",       ...adminOnly, downloadReport);
-router.delete("/:id",             ...adminOnly, deleteReport);
+router.get("/",                   ...canViewReports, listReports);
+router.post("/generate",          ...canViewReports, generateReport);
+router.get("/:id/download",       ...canViewReports, downloadReport);
+router.delete("/:id",             ...canViewReports, deleteReport);
 
 // U5.8 — Attendance certificate (any authenticated user, own cert only)
 router.post("/certificate",       authenticateJWT, generateCertificate);
