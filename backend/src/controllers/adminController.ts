@@ -255,9 +255,6 @@ export const changeUserRole: RequestHandler = async (req, res) => {
 
   const target = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true } });
   if (!target) return res.status(404).json({ error: "User not found" });
-  if (target.role === Role.SYSTEM_ADMIN && req.user.role !== Role.SYSTEM_ADMIN) {
-    return res.status(403).json({ error: "Only SYSTEM_ADMIN can change another SYSTEM_ADMIN's role" });
-  }
 
   const user = await prisma.user.update({
     where: { id },
