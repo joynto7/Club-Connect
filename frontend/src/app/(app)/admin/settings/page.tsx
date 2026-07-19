@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Save, Edit2, X } from "lucide-react";
 import { getSystemSettings, upsertSystemSetting, type SystemConfig } from "@/lib/admin";
+import { useRequireCapability } from "@/hooks/useRequireCapability";
 
 type EditState = { key: string; value: string; label: string };
 
@@ -17,6 +18,7 @@ const DEFAULT_SETTINGS: Array<{ key: string; label: string; placeholder: string 
 ];
 
 export default function AdminSettingsPage() {
+  useRequireCapability("viewSettings");
   const qc = useQueryClient();
   const [editing, setEditing] = useState<EditState | null>(null);
   const [newKey, setNewKey] = useState("");

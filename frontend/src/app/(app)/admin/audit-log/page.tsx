@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Shield, ChevronLeft, ChevronRight, Search, Filter } from "lucide-react";
 import { getAuditLog, type AuditEntry } from "@/lib/admin";
 import { format } from "date-fns";
+import { useRequireCapability } from "@/hooks/useRequireCapability";
 
 const ACTION_COLORS: Record<string, string> = {
   APPROVE_CLUB:           "bg-green-100 text-green-700",
@@ -79,6 +80,7 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
 }
 
 export default function AuditLogPage() {
+  useRequireCapability("viewAuditLog");
   const [page, setPage] = useState(1);
   const [actionFilter, setActionFilter] = useState("");
   const [from, setFrom] = useState("");

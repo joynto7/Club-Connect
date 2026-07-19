@@ -8,6 +8,7 @@ import {
   type AdminUser,
 } from "@/lib/admin";
 import { toast } from "sonner";
+import { useRequireCapability } from "@/hooks/useRequireCapability";
 
 const ROLES = ["STUDENT", "CLUB_OFFICER", "UNIVERSITY_ADMIN", "SYSTEM_ADMIN"];
 
@@ -19,6 +20,7 @@ const roleColors: Record<string, string> = {
 };
 
 export default function AdminUsersPage() {
+  useRequireCapability("manageUsers");
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
