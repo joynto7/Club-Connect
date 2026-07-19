@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import LogoIcon from "@/components/shared/LogoIcon";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -11,7 +10,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginUser, login2FA, getApiErrorMessage, buildAuthState, type LoginResponse } from "@/lib/auth";
 import { setAuthState } from "@/lib/tokenStorage";
-import { Mail, Lock, Eye, EyeOff, Shield, LogIn, Smartphone } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, LogIn, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
 const loginSchema = z.object({
@@ -83,122 +82,58 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center p-4 sm:p-8 font-sans">
-      <div className="flex w-full max-w-300 bg-white rounded-4xl shadow-sm overflow-hidden min-h-187.5">
-        
-        {/* LEFT COLUMN - BRANDING & ILLUSTRATION */}
-        <div className="hidden lg:flex w-1/2 bg-[#FDF9F1] flex-col relative p-12 border-r border-gray-100 overflow-hidden">
-          {/* Logo */}
-          <div className="flex items-center gap-4 mb-16 z-10">
-            <div className="w-12 h-12 rounded-xl shadow-sm overflow-hidden">
-              <LogoIcon size={48} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold leading-tight text-gray-900 tracking-wide">
-                CLUB <br /> <span className="text-[#EBA814]">CONNECT</span>
-              </h1>
-              <p className="text-[10px] text-gray-500 mt-0.5">Connect. Collaborate. Create Impact.</p>
-            </div>
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-sm border border-gray-100 p-8 sm:p-10">
+        {/* Logo */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-14 h-14 rounded-xl shadow-sm overflow-hidden mb-3">
+            <LogoIcon size={56} />
           </div>
-
-          {/* Hero Text */}
-          <div className="z-10 max-w-md mt-4">
-            <h2 className="text-4xl font-bold text-gray-900 leading-[1.15] mb-6 tracking-tight">
-              Empowering Clubs.<br />
-              Enriching <span className="text-[#EBA814]">Campus Life.</span>
-            </h2>
-            <p className="text-gray-600 leading-relaxed text-sm pr-12 font-medium">
-              Club Connect is your one-stop platform to discover clubs, manage activities, and build a stronger campus community.
-            </p>
-          </div>
-
-          {/* Floating Trust Badge */}
-          <div className="absolute bottom-12 left-12 z-20 bg-white px-5 py-3.5 rounded-2xl shadow-md flex items-center gap-4">
-            <div className="text-[#EBA814]">
-              <Shield size={24} strokeWidth={2} />
-            </div>
-            <p className="text-sm font-semibold text-gray-800 leading-tight">
-              Trusted by clubs.<br />
-              <span className="text-[#EBA814]">Loved</span> by communities.
-            </p>
-          </div>
-
-          {/* Decorative Elements - Birds & Background */}
-          <div className="absolute top-1/3 right-1/4 w-4 h-4 text-[#EBA814] opacity-70">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c-2.5-1.5-6-2-9-1.5-3-.5-6.5 0-9 1.5 2.5-1.5 6-1 9 0 3-1 6.5-1.5 9 0z"/></svg>
-          </div>
-          <div className="absolute top-1/4 right-1/3 w-3 h-3 text-[#EBA814] opacity-50">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c-2.5-1.5-6-2-9-1.5-3-.5-6.5 0-9 1.5 2.5-1.5 6-1 9 0 3-1 6.5-1.5 9 0z"/></svg>
-          </div>
-          <div className="absolute top-[40%] right-10 w-5 h-5 text-[#EBA814] opacity-60">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c-2.5-1.5-6-2-9-1.5-3-.5-6.5 0-9 1.5 2.5-1.5 6-1 9 0 3-1 6.5-1.5 9 0z"/></svg>
-          </div>
-
-          {/* Illustration Background */}
-          <div className="absolute bottom-0 right-0 left-0 h-[75%] pointer-events-none z-0">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#FDF9F1] via-[#FDF9F1]/60 to-transparent z-10" />
-            <Image 
-              src="/assets/images/bg1.png" 
-              alt="Campus Background"
-              fill
-              className="object-cover object-bottom opacity-95"
-              priority
-            />
-          </div>
+          <h1 className="text-lg font-bold text-gray-900 tracking-wide">
+            CLUB <span className="text-[#EBA814]">CONNECT</span>
+          </h1>
         </div>
 
-        {/* RIGHT COLUMN - FORM */}
-        <div className="w-full lg:w-1/2 p-8 sm:p-14 lg:p-16 flex flex-col justify-center relative bg-white">
-          
-          {/* Decorative dots top right */}
-          <div className="absolute top-10 right-10 grid grid-cols-5 gap-2 opacity-30">
-            {[...Array(20)].map((_, i) => (
-              <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#EBA814]"></div>
-            ))}
+        <h2 className="text-2xl font-bold text-gray-900 mb-1 text-center">
+          Welcome <span className="text-[#EBA814]">Back!</span>
+        </h2>
+        <p className="text-gray-500 mb-8 text-sm text-center font-medium">Login to continue to Club Connect</p>
+
+        {apiError && <div className="p-3 mb-6 bg-red-50 text-red-700 rounded-xl text-sm border border-red-100">{apiError}</div>}
+
+        {/* 2FA Step */}
+        {twoFAStep ? (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-xl border border-amber-200">
+              <Smartphone size={20} className="text-[#EBA814] flex-shrink-0" />
+              <p className="text-sm text-amber-800 font-medium">Enter the 6-digit code from your authenticator app</p>
+            </div>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              value={twoFACode}
+              onChange={e => setTwoFACode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="000000"
+              className="w-full text-center text-3xl tracking-[0.6em] font-mono border-2 border-gray-200 rounded-xl py-4 bg-white focus:outline-none focus:border-[#EBA814]"
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={() => twoFAMutation.mutate({ tempToken, token: twoFACode })}
+              disabled={twoFACode.length < 6 || twoFAMutation.isPending}
+              className="w-full py-3.5 bg-[#EBA814] hover:bg-[#D99810] text-white font-semibold rounded-xl transition-all shadow-[0_6px_20px_rgba(235,168,20,0.3)] disabled:opacity-70 flex items-center justify-center gap-2 text-base"
+            >
+              <LogIn size={20} strokeWidth={2} className="opacity-90" />
+              {twoFAMutation.isPending ? "Verifying…" : "Verify & Login"}
+            </button>
+            <button type="button" onClick={() => { setTwoFAStep(false); setTwoFACode(""); setTempToken(""); }} className="w-full text-sm text-gray-500 hover:text-gray-700">
+              Back to login
+            </button>
           </div>
-
-          <div className="max-w-md w-full mx-auto z-10">
-            <h2 className="text-[2.5rem] font-bold text-gray-900 mb-2 tracking-tight">
-              Welcome <span className="text-[#EBA814]">Back!</span>
-            </h2>
-            <p className="text-gray-500 mb-10 text-base font-medium">Login to continue to Club Connect</p>
-
-            {apiError && <div className="p-3 mb-6 bg-red-50 text-red-700 rounded-xl text-sm border border-red-100">{apiError}</div>}
-
-            {/* 2FA Step */}
-            {twoFAStep ? (
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-xl border border-amber-200">
-                  <Smartphone size={20} className="text-[#EBA814] flex-shrink-0" />
-                  <p className="text-sm text-amber-800 font-medium">Enter the 6-digit code from your authenticator app</p>
-                </div>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={6}
-                  value={twoFACode}
-                  onChange={e => setTwoFACode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="000000"
-                  className="w-full text-center text-3xl tracking-[0.6em] font-mono border-2 border-gray-200 rounded-xl py-4 bg-white focus:outline-none focus:border-[#EBA814]"
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={() => twoFAMutation.mutate({ tempToken, token: twoFACode })}
-                  disabled={twoFACode.length < 6 || twoFAMutation.isPending}
-                  className="w-full py-3.5 bg-[#EBA814] hover:bg-[#D99810] text-white font-semibold rounded-xl transition-all shadow-[0_6px_20px_rgba(235,168,20,0.3)] disabled:opacity-70 flex items-center justify-center gap-2 text-base"
-                >
-                  <LogIn size={20} strokeWidth={2} className="opacity-90" />
-                  {twoFAMutation.isPending ? "Verifying…" : "Verify & Login"}
-                </button>
-                <button type="button" onClick={() => { setTwoFAStep(false); setTwoFACode(""); setTempToken(""); }} className="w-full text-sm text-gray-500 hover:text-gray-700">
-                  Back to login
-                </button>
-              </div>
-            ) : (
-            <>
+        ) : (
+          <>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              
               {/* Email Input */}
               <div>
                 <label className="block text-sm font-bold text-gray-800 mb-2">Email Address</label>
@@ -240,7 +175,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={mutation.isPending}
-                className="w-full py-3.5 mt-8 bg-[#EBA814] hover:bg-[#D99810] text-white font-semibold rounded-xl transition-all shadow-[0_6px_20px_rgba(235,168,20,0.3)] disabled:opacity-70 flex items-center justify-center gap-2 text-base"
+                className="w-full py-3.5 mt-2 bg-[#EBA814] hover:bg-[#D99810] text-white font-semibold rounded-xl transition-all shadow-[0_6px_20px_rgba(235,168,20,0.3)] disabled:opacity-70 flex items-center justify-center gap-2 text-base"
               >
                 <LogIn size={20} strokeWidth={2} className="opacity-90" />
                 {mutation.isPending ? "Logging in..." : "Login"}
@@ -271,10 +206,8 @@ export default function LoginPage() {
             <p className="text-center mt-8 text-sm font-medium text-gray-500">
               Don't have an account? <Link href="/register" className="text-[#EBA814] font-bold hover:underline">Sign Up</Link>
             </p>
-            </>
-            )}
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );
