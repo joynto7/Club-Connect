@@ -81,7 +81,7 @@ export default function Home() {
           </div>
         )}
 
-        <div className="absolute inset-0 bg-gradient-to-b from-[#FDF9F1] via-[#FDF9F1]/40 to-transparent z-10" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#FDF9F1] via-[#FDF9F1]/40 to-transparent dark:from-[#18181b] dark:via-[#18181b]/40 z-10" />
       </div>
 
       {/* ═══════════════════════════════════════════════════════
