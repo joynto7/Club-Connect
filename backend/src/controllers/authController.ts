@@ -7,6 +7,7 @@ import { z } from "zod";
 import { generateSecret, generateURI, verify as verifyOTP, verifySync as verifyOTPSync } from "otplib";
 import qrcode from "qrcode";
 import prisma from "../prisma.ts";
+import { logger } from "../lib/logger.ts";
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
@@ -67,31 +68,37 @@ const createRefreshToken = (user: { id: string; email: string; role: string }) =
     { expiresIn: refreshTokenExpiresIn } as SignOptions
   );
 
+// Best-effort — a delivery failure (unverified sender domain, SMTP outage, etc.)
+// must never fail the request that triggered it, same as notificationService.ts.
 const sendEmail = async (to: string, subject: string, html: string) => {
-  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT ?? 587),
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+  try {
+    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT ?? 587),
+        secure: false,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM ?? "Club Connect <no-reply@clubconnect.local>",
-      to,
-      subject,
-      html,
-    });
-    return;
+      await transporter.sendMail({
+        from: process.env.EMAIL_FROM ?? "Club Connect <no-reply@clubconnect.local>",
+        to,
+        subject,
+        html,
+      });
+      return;
+    }
+
+    console.log("=== EMAIL DUMP ===");
+    console.log(`To: ${to}`);
+    console.log(`Subject: ${subject}`);
+    console.log(html);
+  } catch (err) {
+    logger.error("Email delivery failed", { to, subject, error: err instanceof Error ? err.message : String(err) });
   }
-
-  console.log("=== EMAIL DUMP ===");
-  console.log(`To: ${to}`);
-  console.log(`Subject: ${subject}`);
-  console.log(html);
 };
 
 const createRandomToken = () => crypto.randomBytes(24).toString("hex");
