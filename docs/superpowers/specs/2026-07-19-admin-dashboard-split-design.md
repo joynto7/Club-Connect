@@ -29,7 +29,7 @@ Each side (frontend, backend) gets its own capability-to-roles config, mirroring
 
 ```ts
 const ROLE_CAPABILITIES = {
-  approveClubs:        ["CLUB_OFFICER", "UNIVERSITY_ADMIN", "SYSTEM_ADMIN"],
+  approveClubs:        ["UNIVERSITY_ADMIN", "SYSTEM_ADMIN"],
   approveEvents:       ["UNIVERSITY_ADMIN", "SYSTEM_ADMIN"],
   viewContentReports:  ["UNIVERSITY_ADMIN", "SYSTEM_ADMIN"],
   viewAnalytics:       ["UNIVERSITY_ADMIN", "SYSTEM_ADMIN"],
@@ -41,7 +41,7 @@ const ROLE_CAPABILITIES = {
 } as const;
 ```
 
-Note: `approveClubs` including `CLUB_OFFICER` reflects existing behavior (officers already act on their own club's pending items); this table documents current reality for the admin-boundary capabilities, it doesn't change officer-level behavior.
+Note: `approveClubs` here means the admin capability to approve/reject *new club creation* requests (`bulkApproveClubs` and friends in `admin.ts`) — it's unrelated to a club officer approving membership requests into their own club, which is a separate feature on separate routes and isn't touched by this work.
 
 ## Backend changes
 
@@ -67,7 +67,9 @@ Note: `approveClubs` including `CLUB_OFFICER` reflects existing behavior (office
 - **Community** — Members, Venues, Resources, Leaderboard, Announcements
 - **Personal** — My Bookings, My Payments, My Profile, My Activities
 - **Settings** — Notifications, Sessions, Security
-- **Admin** (role-gated via the capability table) — Analytics, Reports, Content Reports for `UNIVERSITY_ADMIN`; additionally Users, System Settings, Audit Log, System Monitor for `SYSTEM_ADMIN`
+- **Admin** (role-gated via the capability table) — Admin Panel (the existing hub, unchanged: still the way to reach admin's club/event moderation views and Content Reports), Analytics, Reports for `UNIVERSITY_ADMIN`; additionally Users, System Settings, Audit Log, System Monitor as their own direct links for `SYSTEM_ADMIN`
+
+  (Users and System Settings are new *direct* sidebar links — today they're only reachable through the Admin Panel hub. Audit Log was already a direct link; it just moves from "both admin roles" to "`SYSTEM_ADMIN` only." Content Reports and the admin clubs/events moderation views stay hub-only, unchanged — not promoted to direct links by this work.)
 
 **Icon fixes** (deduplicating collisions found in the current code, keeping one icon per item — confirmed via mockup):
 - Members: distinct member-card icon (was reusing Clubs' `Users2`)
@@ -81,7 +83,7 @@ No emoji found anywhere in the existing sidebar/nav code — this was confirmed,
 ## Error handling
 
 - Backend: unauthorized requests get a 403 from `requireCapability`, same pattern `requireRole` already uses today — no new error handling needed.
-- Frontend: pages behind a `SYSTEM_ADMIN`-only capability (`/admin/system-monitor`, `/admin/settings`, `/admin/audit-log`, `/admin/users`) get a client-side capability check that redirects to `/dashboard` if the current role lacks it — protects against a `UNIVERSITY_ADMIN` typing the URL directly and landing on a page full of silently-failed API calls.
+- Frontend: one small shared hook (e.g. `useRequireCapability(capability)`) that redirects to `/dashboard` if the current role lacks it, used at the top of `/admin/system-monitor`, `/admin/settings`, `/admin/audit-log`, and `/admin/users` — one implementation, four call sites, not four copies of the same check. Protects against a `UNIVERSITY_ADMIN` typing the URL directly and landing on a page full of silently-failed API calls.
 
 ## Verification
 
