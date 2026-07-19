@@ -32,6 +32,7 @@ npm-debug.log*
 
 # Local IDE / agent config
 .claude/
+.superpowers/
 
 # User uploads (use S3 in production)
 backend/public/uploads/
