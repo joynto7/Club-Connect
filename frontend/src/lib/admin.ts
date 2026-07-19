@@ -167,9 +167,33 @@ export type SystemSettingsResponse = {
   map: Record<string, string>;
 };
 
+// ── System Monitor types ─────────────────────────────────────────────────────
+export type SystemMonitorStats = {
+  totalUsers: number;
+  activeSessions: number;
+  suspendedAccounts: number;
+  lockedOutAccounts: number;
+  elevatedLoginAttempts: number;
+  twoFactorAdoption: number;
+  signupsOverTime: Array<{ date: string; count: number }>;
+  recentAuditLogs: Array<{
+    id: string;
+    action: string;
+    targetType: string;
+    targetId: string;
+    actorName: string;
+    createdAt: string;
+  }>;
+};
+
 // ── API functions ────────────────────────────────────────────────────────────
 export async function getAdminStats() {
   const r = await api.get<AdminStats>("/admin/stats");
+  return r.data;
+}
+
+export async function getSystemMonitor() {
+  const r = await api.get<SystemMonitorStats>("/admin/system-monitor");
   return r.data;
 }
 
