@@ -593,7 +593,7 @@ export const getSystemMonitor: RequestHandler = async (req, res) => {
     prisma.session.count({ where: { expiresAt: { gt: now } } }),
     prisma.user.count({ where: { isSuspended: true } }),
     prisma.user.count({ where: { lockedUntil: { gt: now } } }),
-    prisma.user.count({ where: { loginAttempts: { gt: 0 } } }),
+    prisma.user.count({ where: { loginAttempts: { gte: 3 } } }),
     prisma.user.count({ where: { twoFactorEnabled: true } }),
     prisma.user.findMany({
       where: { createdAt: { gte: thirtyDaysAgo } },
