@@ -80,7 +80,7 @@ function EventCard({ event }: { event: Event }) {
           <div className="flex items-center gap-2">
             {event.isPaid && event.ticketPrice ? (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                ${(event.ticketPrice / 100).toFixed(2)}
+                ৳{(event.ticketPrice / 100).toFixed(2)}
               </span>
             ) : null}
             {spotsLeft !== null ? (

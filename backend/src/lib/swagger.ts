@@ -141,7 +141,7 @@ const options: swaggerJSDoc.Options = {
       { name: "Analytics", description: "Club & platform analytics" },
       { name: "Admin", description: "Admin panel operations" },
       { name: "Reports", description: "Export reports (CSV/PDF)" },
-      { name: "Payments", description: "Stripe checkout & club budgets" },
+      { name: "Payments", description: "SSLCommerz checkout & club budgets" },
       { name: "AI", description: "Claude AI features" },
       { name: "Leaderboard", description: "Points & leaderboard" },
       { name: "Integrations", description: "Slack/Discord webhook integrations" },
@@ -385,7 +385,7 @@ const options: swaggerJSDoc.Options = {
         get: { tags: ["Events"], summary: "Download .ics calendar file", security: [{}], parameters: [{ in: "path", name: "id", required: true, schema: { type: "string" } }], responses: { "200": { description: "iCal file", content: { "text/calendar": {} } } } },
       },
       "/events/{id}/checkout": {
-        post: { tags: ["Payments"], summary: "Create Stripe Checkout session for paid event", parameters: [{ in: "path", name: "id", required: true, schema: { type: "string" } }], responses: { "200": { description: "{ sessionUrl }" } } },
+        post: { tags: ["Payments"], summary: "Create SSLCommerz payment session for paid event", parameters: [{ in: "path", name: "id", required: true, schema: { type: "string" } }], responses: { "200": { description: "{ sessionUrl }" } } },
       },
       // ── Search ────────────────────────────────────────────────────────────
       "/search": {
@@ -467,8 +467,17 @@ const options: swaggerJSDoc.Options = {
       "/payments/my": {
         get: { tags: ["Payments"], summary: "List current user's payment history", responses: { "200": { description: "Array of payments" } } },
       },
-      "/payments/webhook": {
-        post: { tags: ["Payments"], summary: "Stripe webhook endpoint (raw body, no auth)", security: [], responses: { "200": { description: "Acknowledged" } } },
+      "/payments/sslcommerz/success": {
+        post: { tags: ["Payments"], summary: "SSLCommerz success redirect (form-encoded, no auth — verified server-side before trusting)", security: [], responses: { "302": { description: "Redirect to frontend event page" } } },
+      },
+      "/payments/sslcommerz/fail": {
+        post: { tags: ["Payments"], summary: "SSLCommerz failure redirect (form-encoded, no auth)", security: [], responses: { "302": { description: "Redirect to frontend event page" } } },
+      },
+      "/payments/sslcommerz/cancel": {
+        post: { tags: ["Payments"], summary: "SSLCommerz cancellation redirect (form-encoded, no auth)", security: [], responses: { "302": { description: "Redirect to frontend event page" } } },
+      },
+      "/payments/sslcommerz/ipn": {
+        post: { tags: ["Payments"], summary: "SSLCommerz server-to-server IPN (form-encoded, no auth)", security: [], responses: { "200": { description: "Acknowledged" } } },
       },
     },
   },

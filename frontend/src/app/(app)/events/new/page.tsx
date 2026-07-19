@@ -314,20 +314,20 @@ export default function NewEventPage() {
         </div>
 
         {isPaid && (
-          <Field label="Ticket Price (USD)">
+          <Field label="Ticket Price (BDT)">
             <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-sm">$</span>
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-sm">৳</span>
               <input
                 type="number"
-                min="0.50"
-                step="0.01"
+                min="1"
+                step="1"
                 value={ticketPrice}
                 onChange={(e) => setTicketPrice(e.target.value)}
-                placeholder="5.00"
+                placeholder="500"
                 className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#EBA814] focus:ring-1 focus:ring-[#EBA814]"
               />
             </div>
-            <p className="text-xs text-gray-400 mt-1">Enter the price in dollars. Payment is processed via Stripe.</p>
+            <p className="text-xs text-gray-400 mt-1">Enter the price in Taka. Payment is processed via SSLCommerz (bKash, Nagad, Rocket, and cards).</p>
           </Field>
         )}
 

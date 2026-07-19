@@ -578,17 +578,18 @@ model EmailDigestSubscription {
 // ── U11 — Payments & Institutional ───────────────────────────────────────────
 
 model Payment {
-  id              String   @id @default(uuid())
-  user            User     @relation(fields: [userId], references: [id])
-  userId          String
-  event           Event    @relation(fields: [eventId], references: [id])
-  eventId         String
-  stripePaymentId String   @unique
-  amount          Int
-  currency        String   @default("usd")
-  status          String   @default("pending")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String   @id @default(uuid())
+  user          User     @relation(fields: [userId], references: [id])
+  userId        String
+  event         Event    @relation(fields: [eventId], references: [id])
+  eventId       String
+  transactionId String   @unique
+  validationId  String?
+  amount        Int
+  currency      String   @default("BDT")
+  status        String   @default("pending")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model ClubBudget {

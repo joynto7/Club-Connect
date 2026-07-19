@@ -1,11 +1,21 @@
 import express from "express";
 import { authenticateJWT } from "../middleware/authMiddleware.ts";
-import { stripeWebhook, getMyPayments } from "../controllers/paymentController.ts";
+import {
+  sslcommerzSuccess,
+  sslcommerzFail,
+  sslcommerzCancel,
+  sslcommerzIPN,
+  getMyPayments,
+} from "../controllers/paymentController.ts";
 
 const router = express.Router();
 
-// Stripe webhook — raw body required, no auth
-router.post("/webhook", express.raw({ type: "application/json" }), stripeWebhook);
+// SSLCommerz posts form-encoded data to these — no auth, the gateway calls them directly
+const formParser = express.urlencoded({ extended: true });
+router.post("/sslcommerz/success", formParser, sslcommerzSuccess);
+router.post("/sslcommerz/fail", formParser, sslcommerzFail);
+router.post("/sslcommerz/cancel", formParser, sslcommerzCancel);
+router.post("/sslcommerz/ipn", formParser, sslcommerzIPN);
 
 // My payment history
 router.get("/my", authenticateJWT, getMyPayments);

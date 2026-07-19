@@ -1,23 +1,27 @@
 import type { RequestHandler } from "express";
-import Stripe from "stripe";
+import { randomUUID } from "crypto";
+import SSLCommerzPayment from "sslcommerz-lts";
 import prisma from "../prisma.ts";
 import { createNotification } from "../services/notificationService.ts";
 
-const stripeKey = process.env.STRIPE_SECRET_KEY ?? "";
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET ?? "";
+const storeId = process.env.SSLCOMMERZ_STORE_ID ?? "";
+const storePassword = process.env.SSLCOMMERZ_STORE_PASSWORD ?? "";
+const isLive = process.env.SSLCOMMERZ_IS_LIVE === "true";
+const appUrl = process.env.APP_URL ?? "http://127.0.0.1:5001";
+const frontendUrl = process.env.FRONTEND_URL ?? "http://127.0.0.1:3000";
 
-function getStripe() {
-  if (!stripeKey || stripeKey.startsWith("sk_test_your")) return null;
-  return new Stripe(stripeKey);
+function getSslcommerz() {
+  if (!storeId || !storePassword) return null;
+  return new SSLCommerzPayment(storeId, storePassword, isLive);
 }
 
-// POST /events/:id/checkout — creates a Stripe Checkout session
+// POST /events/:id/checkout — creates an SSLCommerz payment session
 export const createCheckoutSession: RequestHandler = async (req, res) => {
   const userId = req.user!.id;
   const eventId = req.params["id"] as string;
 
-  const stripe = getStripe();
-  if (!stripe) {
+  const sslcz = getSslcommerz();
+  if (!sslcz) {
     return res.status(503).json({ error: "Payment system not configured." });
   }
 
@@ -65,97 +69,146 @@ export const createCheckoutSession: RequestHandler = async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } });
   if (!user) return res.status(404).json({ error: "User not found." });
 
-  const frontendUrl = process.env.FRONTEND_URL ?? "http://127.0.0.1:3000";
+  // ticketPrice is stored the same way the old Stripe integration expected it
+  // (whole currency unit × 100) — SSLCommerz's total_amount wants whole Taka.
+  const amountTaka = event.ticketPrice / 100;
+  const tranId = randomUUID();
 
-  const session = await stripe.checkout.sessions.create({
-    payment_method_types: ["card"],
-    mode: "payment",
-    customer_email: user.email,
-    line_items: [
-      {
-        price_data: {
-          currency: "usd",
-          product_data: {
-            name: event.title,
-            description: `Ticket for ${event.title} by ${event.club.name}`,
-          },
-          unit_amount: event.ticketPrice,
-        },
-        quantity: 1,
-      },
-    ],
-    metadata: { eventId, userId },
-    success_url: `${frontendUrl}/events/${eventId}?payment=success`,
-    cancel_url: `${frontendUrl}/events/${eventId}?payment=cancelled`,
+  const payment = await prisma.payment.create({
+    data: {
+      id: tranId,
+      userId,
+      eventId,
+      transactionId: tranId,
+      amount: event.ticketPrice,
+      currency: "BDT",
+      status: "pending",
+    },
   });
 
-  res.json({ sessionUrl: session.url });
+  const initResponse = await sslcz.init({
+    total_amount: amountTaka,
+    currency: "BDT",
+    tran_id: tranId,
+    success_url: `${appUrl}/payments/sslcommerz/success`,
+    fail_url: `${appUrl}/payments/sslcommerz/fail`,
+    cancel_url: `${appUrl}/payments/sslcommerz/cancel`,
+    ipn_url: `${appUrl}/payments/sslcommerz/ipn`,
+    shipping_method: "NO",
+    product_name: event.title,
+    product_category: "Event Ticket",
+    product_profile: "general",
+    cus_name: user.name,
+    cus_email: user.email,
+    cus_add1: "Dhaka",
+    cus_city: "Dhaka",
+    cus_postcode: "1000",
+    cus_country: "Bangladesh",
+    cus_phone: "01700000000",
+    ship_name: user.name,
+    ship_add1: "Dhaka",
+    ship_city: "Dhaka",
+    ship_postcode: "1000",
+    ship_country: "Bangladesh",
+  });
+
+  if (initResponse.status !== "SUCCESS" || !initResponse.GatewayPageURL) {
+    await prisma.payment.update({ where: { id: payment.id }, data: { status: "failed" } });
+    return res.status(502).json({ error: "Could not start payment session. Please try again." });
+  }
+
+  res.json({ sessionUrl: initResponse.GatewayPageURL });
 };
 
-// POST /payments/webhook — Stripe webhook handler (raw body)
-export const stripeWebhook: RequestHandler = async (req, res) => {
-  const stripe = getStripe();
-  if (!stripe) return res.sendStatus(503);
+// Shared by the success redirect and the IPN callback — the redirect alone is not
+// trustworthy (a browser can hit that URL without ever paying), so both paths
+// independently confirm the transaction with SSLCommerz's server-to-server API
+// before marking anything paid. Safe to call twice for the same transaction.
+async function confirmPayment(tranId: string, valId: string) {
+  const sslcz = getSslcommerz();
+  if (!sslcz) return { ok: false as const, eventId: undefined };
 
-  const sig = req.headers["stripe-signature"] as string;
-  let event: Stripe.Event;
+  const payment = await prisma.payment.findUnique({ where: { transactionId: tranId } });
+  if (!payment) return { ok: false as const, eventId: undefined };
+  if (payment.status === "succeeded") return { ok: true as const, eventId: payment.eventId };
 
-  try {
-    // req.body is raw Buffer when using express.raw()
-    event = stripe.webhooks.constructEvent(req.body as Buffer, sig, webhookSecret);
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    return res.status(400).json({ error: `Webhook error: ${msg}` });
+  const validation = await sslcz.validate({ val_id: valId });
+  const isValid = validation.status === "VALID" || validation.status === "VALIDATED";
+  if (!isValid) return { ok: false as const, eventId: payment.eventId };
+
+  // Cross-check the paid amount against what we asked for, to guard against a
+  // forged/mismatched val_id being replayed against the wrong transaction.
+  const validatedAmount = Math.round(parseFloat(validation.amount ?? "0") * 100);
+  if (validatedAmount !== payment.amount) {
+    return { ok: false as const, eventId: payment.eventId };
   }
 
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const { eventId, userId } = session.metadata ?? {};
+  await prisma.$transaction([
+    prisma.payment.update({
+      where: { id: payment.id },
+      data: { status: "succeeded", validationId: valId },
+    }),
+    prisma.eventAttendance.upsert({
+      where: { eventId_userId: { eventId: payment.eventId, userId: payment.userId } },
+      create: { eventId: payment.eventId, userId: payment.userId, status: "REGISTERED", isWaitlisted: false },
+      update: { status: "REGISTERED", isWaitlisted: false },
+    }),
+  ]);
 
-    if (eventId && userId && session.payment_intent) {
-      const paymentIntentId =
-        typeof session.payment_intent === "string"
-          ? session.payment_intent
-          : session.payment_intent.id;
+  const dbEvent = await prisma.event.findUnique({ where: { id: payment.eventId }, select: { title: true } });
+  void createNotification(
+    payment.userId,
+    "PAYMENT_SUCCEEDED",
+    "Ticket Confirmed",
+    `Your ticket for "${dbEvent?.title ?? "the event"}" has been confirmed. See you there!`,
+    `/events/${payment.eventId}`
+  );
 
-      await prisma.$transaction(async (tx) => {
-        // Record the payment
-        await tx.payment.upsert({
-          where: { stripePaymentId: paymentIntentId },
-          create: {
-            userId,
-            eventId,
-            stripePaymentId: paymentIntentId,
-            amount: session.amount_total ?? 0,
-            currency: session.currency ?? "usd",
-            status: "succeeded",
-          },
-          update: { status: "succeeded" },
-        });
+  return { ok: true as const, eventId: payment.eventId };
+}
 
-        // Create or update EventAttendance
-        await tx.eventAttendance.upsert({
-          where: { eventId_userId: { eventId, userId } },
-          create: { eventId, userId, status: "REGISTERED", isWaitlisted: false },
-          update: { status: "REGISTERED", isWaitlisted: false },
-        });
-      });
+// POST /payments/sslcommerz/success — browser redirect after payment (SSLCommerz posts form data)
+export const sslcommerzSuccess: RequestHandler = async (req, res) => {
+  const { tran_id, val_id } = req.body as { tran_id?: string; val_id?: string };
+  if (!tran_id || !val_id) return res.redirect(`${frontendUrl}/my-payments?payment=error`);
 
-      // Notify user
-      const dbEvent = await prisma.event.findUnique({
-        where: { id: eventId },
-        select: { title: true },
-      });
-      void createNotification(
-        userId,
-        "PAYMENT_SUCCEEDED",
-        "Ticket Confirmed",
-        `Your ticket for "${dbEvent?.title ?? "the event"}" has been confirmed. See you there!`,
-        `/events/${eventId}`
-      );
-    }
+  const result = await confirmPayment(tran_id, val_id);
+  const path = result.eventId ? `/events/${result.eventId}` : "/my-payments";
+  res.redirect(`${frontendUrl}${path}?payment=${result.ok ? "success" : "failed"}`);
+};
+
+// POST /payments/sslcommerz/fail
+export const sslcommerzFail: RequestHandler = async (req, res) => {
+  const { tran_id } = req.body as { tran_id?: string };
+  const payment = tran_id
+    ? await prisma.payment.findUnique({ where: { transactionId: tran_id } })
+    : null;
+  if (payment && payment.status === "pending") {
+    await prisma.payment.update({ where: { id: payment.id }, data: { status: "failed" } });
   }
+  const path = payment ? `/events/${payment.eventId}` : "/my-payments";
+  res.redirect(`${frontendUrl}${path}?payment=failed`);
+};
 
+// POST /payments/sslcommerz/cancel
+export const sslcommerzCancel: RequestHandler = async (req, res) => {
+  const { tran_id } = req.body as { tran_id?: string };
+  const payment = tran_id
+    ? await prisma.payment.findUnique({ where: { transactionId: tran_id } })
+    : null;
+  if (payment && payment.status === "pending") {
+    await prisma.payment.update({ where: { id: payment.id }, data: { status: "cancelled" } });
+  }
+  const path = payment ? `/events/${payment.eventId}` : "/my-payments";
+  res.redirect(`${frontendUrl}${path}?payment=cancelled`);
+};
+
+// POST /payments/sslcommerz/ipn — server-to-server notification, the reliable fallback
+// in case the customer's browser never makes it back to success_url.
+export const sslcommerzIPN: RequestHandler = async (req, res) => {
+  const { tran_id, val_id } = req.body as { tran_id?: string; val_id?: string };
+  if (!tran_id || !val_id) return res.sendStatus(400);
+  await confirmPayment(tran_id, val_id);
   res.sendStatus(200);
 };
 

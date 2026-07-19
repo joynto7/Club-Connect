@@ -71,7 +71,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     queryFn: () => getEvent(id),
   });
 
-  // Show payment result toast on redirect back from Stripe
+  // Show payment result toast on redirect back from SSLCommerz
   useEffect(() => {
     const payment = searchParams.get("payment");
     if (payment === "success") {
@@ -376,7 +376,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       <CreditCard size={14} className="text-[#EBA814]" /> Paid event
                     </span>
                     <span className="text-base font-bold text-gray-900">
-                      ${(event.ticketPrice / 100).toFixed(2)}
+                      ৳{(event.ticketPrice / 100).toFixed(2)}
                     </span>
                   </div>
                   <button
@@ -392,7 +392,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     className="w-full py-3.5 bg-[#EBA814] hover:bg-[#D99810] text-white font-semibold rounded-xl transition-colors disabled:opacity-60 shadow-[0_4px_14px_rgba(235,168,20,0.25)] flex items-center justify-center gap-2"
                   >
                     <CreditCard size={15} />
-                    {isFull ? "Event Full" : `Buy Ticket · $${(event.ticketPrice / 100).toFixed(2)}`}
+                    {isFull ? "Event Full" : `Buy Ticket · ৳${(event.ticketPrice / 100).toFixed(2)}`}
                   </button>
                 </div>
               ) : (

@@ -223,7 +223,7 @@ export async function createCheckoutSession(eventId: string) {
 
 export type PaymentRecord = {
   id: string;
-  stripePaymentId: string;
+  transactionId: string;
   amount: number;
   currency: string;
   status: string;
