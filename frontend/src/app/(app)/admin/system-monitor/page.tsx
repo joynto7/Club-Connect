@@ -24,7 +24,7 @@ function StatTile({ icon, label, value, loading }: {
 export default function SystemMonitorPage() {
   useRequireCapability("viewSystemMonitor");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["system-monitor"],
     queryFn: getSystemMonitor,
   });
@@ -33,6 +33,12 @@ export default function SystemMonitorPage() {
     <div className="max-w-5xl mx-auto space-y-8">
       <h1 className="text-2xl font-bold text-gray-900">System Monitor</h1>
 
+      {error ? (
+        <div className="bg-white rounded-2xl shadow-sm p-12 text-center text-red-500">
+          Failed to load system monitor data.
+        </div>
+      ) : (
+      <>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <StatTile icon={<Users size={20} />} label="Total Users" value={data?.totalUsers} loading={isLoading} />
         <StatTile icon={<Activity size={20} />} label="Active Sessions" value={data?.activeSessions} loading={isLoading} />
@@ -92,6 +98,8 @@ export default function SystemMonitorPage() {
           </div>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }
