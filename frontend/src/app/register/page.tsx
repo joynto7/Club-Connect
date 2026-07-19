@@ -11,6 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { registerUser, getApiErrorMessage } from "@/lib/auth";
 import { Mail, Lock, User, Eye, EyeOff, Building2, GraduationCap } from "lucide-react";
 import PasswordStrengthIndicator from "@/components/shared/PasswordStrengthIndicator";
+import LogoIcon from "@/components/shared/LogoIcon";
 
 const YEAR_OPTIONS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "Masters", "PhD", "Other"];
 
@@ -75,14 +76,8 @@ export default function RegisterPage() {
         <div className="hidden lg:flex w-1/2 bg-[#FCFAF5] flex-col relative p-12 border-r border-gray-100">
           {/* Logo */}
           <div className="flex items-center gap-4 mb-16 z-10">
-            <div className="w-12 h-12 bg-zinc-900 rounded-xl shadow-sm border border-zinc-800 flex items-center justify-center overflow-hidden">
-              <Image 
-                src="/assets/images/logo.png" 
-                alt="Club Connect Logo" 
-                width={48} 
-                height={48} 
-                className="object-cover"
-              />
+            <div className="w-12 h-12 rounded-xl shadow-sm overflow-hidden">
+              <LogoIcon size={48} />
             </div>
             <div>
               <h1 className="text-xl font-bold leading-tight text-gray-900 tracking-wide">
