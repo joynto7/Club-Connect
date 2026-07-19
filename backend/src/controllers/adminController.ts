@@ -571,3 +571,65 @@ export const upsertEmailDigestSub: RequestHandler = async (req, res) => {
   });
   return res.json({ subscription: sub });
 };
+
+// ── System Monitor — app activity + security signals ────────────────────────
+export const getSystemMonitor: RequestHandler = async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not authenticated" });
+
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  const [
+    totalUsers,
+    activeSessions,
+    suspendedAccounts,
+    lockedOutAccounts,
+    elevatedLoginAttempts,
+    twoFactorEnabledCount,
+    signupsRaw,
+    recentAuditLogs,
+  ] = await Promise.all([
+    prisma.user.count(),
+    prisma.session.count({ where: { expiresAt: { gt: now } } }),
+    prisma.user.count({ where: { isSuspended: true } }),
+    prisma.user.count({ where: { lockedUntil: { gt: now } } }),
+    prisma.user.count({ where: { loginAttempts: { gt: 0 } } }),
+    prisma.user.count({ where: { twoFactorEnabled: true } }),
+    prisma.user.findMany({
+      where: { createdAt: { gte: thirtyDaysAgo } },
+      select: { createdAt: true },
+    }),
+    prisma.auditLog.findMany({
+      include: { actor: { select: { id: true, name: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
+  ]);
+
+  const signupsByDay = new Map<string, number>();
+  for (const u of signupsRaw) {
+    const day = u.createdAt.toISOString().slice(0, 10);
+    signupsByDay.set(day, (signupsByDay.get(day) ?? 0) + 1);
+  }
+  const signupsOverTime = Array.from(signupsByDay.entries())
+    .map(([date, count]) => ({ date, count }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  return res.json({
+    totalUsers,
+    activeSessions,
+    suspendedAccounts,
+    lockedOutAccounts,
+    elevatedLoginAttempts,
+    twoFactorAdoption: totalUsers > 0 ? twoFactorEnabledCount / totalUsers : 0,
+    signupsOverTime,
+    recentAuditLogs: recentAuditLogs.map((l) => ({
+      id: l.id,
+      action: l.action,
+      targetType: l.targetType,
+      targetId: l.targetId,
+      actorName: l.actor.name,
+      createdAt: l.createdAt.toISOString(),
+    })),
+  });
+};

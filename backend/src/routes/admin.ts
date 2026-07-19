@@ -3,6 +3,7 @@ import { authenticateJWT } from "../middleware/authMiddleware.ts";
 import { requireCapability } from "../middleware/rbacMiddleware.ts";
 import {
   getAdminStats,
+  getSystemMonitor,
   listAdminUsers,
   suspendUser,
   activateUser,
@@ -33,6 +34,7 @@ const canViewAnalytics      = [authenticateJWT, requireCapability("viewAnalytics
 const canManageUsers        = [authenticateJWT, requireCapability("manageUsers")];
 const canViewSettings       = [authenticateJWT, requireCapability("viewSettings")];
 const canViewAuditLog       = [authenticateJWT, requireCapability("viewAuditLog")];
+const canViewSystemMonitor  = [authenticateJWT, requireCapability("viewSystemMonitor")];
 
 // Stats & analytics
 router.get("/stats",     ...canViewDashboardStats, getAdminStats);
@@ -61,6 +63,9 @@ router.put("/settings",    ...canViewSettings, upsertSystemSetting);
 
 // U10.2 — Audit log (System Admin only)
 router.get("/audit-log",   ...canViewAuditLog, getAuditLog);
+
+// System Monitor (System Admin only)
+router.get("/system-monitor", ...canViewSystemMonitor, getSystemMonitor);
 
 // U10.4 — Bulk operations
 router.post("/clubs/bulk-approve",   ...canApproveClubs, bulkApproveClubs);
