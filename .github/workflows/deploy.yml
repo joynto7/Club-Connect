@@ -100,9 +100,9 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      # Trigger Railway redeploy via deploy hook URL
-      - name: Deploy backend to Railway
-        run: curl -s -X POST "${{ secrets.RAILWAY_DEPLOY_HOOK_URL }}"
+      # Trigger Render redeploy via deploy hook URL (Dashboard → service → Settings → Deploy Hook)
+      - name: Deploy backend to Render
+        run: curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
 
       # Wait for backend health check to pass
       - name: Verify deployment
