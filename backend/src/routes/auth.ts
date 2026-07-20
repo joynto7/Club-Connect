@@ -45,7 +45,7 @@ router.post("/register", authLimiter, register);
 router.post("/login", strictLimiter, login);
 router.post("/logout", logout);
 router.post("/refresh-token", authLimiter, refreshToken);
-router.get("/verify-email", verifyEmail);
+router.post("/verify-email", strictLimiter, verifyEmail);
 router.post("/resend-verification", authLimiter, resendVerification);
 router.post("/change-unverified-email", strictLimiter, changeUnverifiedEmail);
 router.post("/request-password-reset", authLimiter, requestPasswordReset);

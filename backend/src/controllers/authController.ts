@@ -13,7 +13,8 @@ const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 
 const emailVerificationSchema = z.object({
-  token: z.string().min(10),
+  email: z.string().email(),
+  code: z.string().length(6),
 });
 
 const registerSchema = z.object({
@@ -112,6 +113,10 @@ const sendEmail = async (to: string, subject: string, html: string) => {
 
 const createRandomToken = () => crypto.randomBytes(24).toString("hex");
 
+// 6-digit numeric code for email verification specifically — createRandomToken()
+// (above) stays in use for password reset, which is unaffected by this change.
+const createVerificationCode = () => crypto.randomInt(100000, 1000000).toString();
+
 const refreshTokenTtlMs = () => {
   // Parse the refreshTokenExpiresIn string (e.g. "7d") to milliseconds
   const match = refreshTokenExpiresIn.match(/^(\d+)([smhd])$/);
@@ -135,8 +140,8 @@ export const register: RequestHandler = async (req, res) => {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const emailVerificationToken = createRandomToken();
-  const emailVerificationTokenExpires = new Date(Date.now() + 1000 * 60 * 60 * 24);
+  const emailVerificationToken = createVerificationCode();
+  const emailVerificationTokenExpires = new Date(Date.now() + 1000 * 60 * 15);
 
   const user = await prisma.user.create({
     data: {
@@ -151,11 +156,10 @@ export const register: RequestHandler = async (req, res) => {
     },
   });
 
-  const verifyUrl = `${frontendUrl}/verify-email?token=${encodeURIComponent(emailVerificationToken)}`;
   void sendEmail(
     email,
     "Verify your Club Connect email",
-    `<p>Hi ${name},</p><p>Click the link below to verify your email address:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p><p>This link expires in 24 hours.</p>`
+    `<p>Hi ${name},</p><p>Your verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${emailVerificationToken}</p><p>This code expires in 15 minutes.</p>`
   );
 
   return res.status(201).json({
@@ -172,22 +176,21 @@ export const register: RequestHandler = async (req, res) => {
 };
 
 export const verifyEmail: RequestHandler = async (req, res) => {
-  const parseResult = emailVerificationSchema.safeParse(req.query);
+  const parseResult = emailVerificationSchema.safeParse(req.body);
   if (!parseResult.success) {
-    return res.status(400).json({ error: "Invalid verification token" });
+    return res.status(400).json({ error: "Invalid or expired code" });
   }
 
-  const user = await prisma.user.findFirst({
-    where: {
-      emailVerificationToken: parseResult.data.token,
-      emailVerificationTokenExpires: {
-        gte: new Date(),
-      },
-    },
-  });
+  const { email, code } = parseResult.data;
+  const user = await prisma.user.findUnique({ where: { email } });
 
-  if (!user) {
-    return res.status(400).json({ error: "Verification token is invalid or expired" });
+  if (
+    !user ||
+    user.emailVerificationToken !== code ||
+    !user.emailVerificationTokenExpires ||
+    user.emailVerificationTokenExpires < new Date()
+  ) {
+    return res.status(400).json({ error: "Invalid or expired code" });
   }
 
   await prisma.user.update({
@@ -212,25 +215,24 @@ export const resendVerification: RequestHandler = async (req, res) => {
   // Always return 200 to avoid leaking which emails are registered
   const user = await prisma.user.findUnique({ where: { email: parseResult.data.email } });
   if (!user || user.emailVerified) {
-    return res.json({ message: "If the email is registered and unverified, a new verification link has been sent." });
+    return res.json({ message: "If the email is registered and unverified, a new verification code has been sent." });
   }
 
-  const emailVerificationToken = createRandomToken();
-  const emailVerificationTokenExpires = new Date(Date.now() + 1000 * 60 * 60 * 24);
+  const emailVerificationToken = createVerificationCode();
+  const emailVerificationTokenExpires = new Date(Date.now() + 1000 * 60 * 15);
 
   await prisma.user.update({
     where: { id: user.id },
     data: { emailVerificationToken, emailVerificationTokenExpires },
   });
 
-  const verifyUrl = `${frontendUrl}/verify-email?token=${encodeURIComponent(emailVerificationToken)}`;
   void sendEmail(
     user.email,
     "Verify your Club Connect email",
-    `<p>Hi ${user.name},</p><p>Click the link below to verify your email address:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p><p>This link expires in 24 hours.</p>`
+    `<p>Hi ${user.name},</p><p>Your verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${emailVerificationToken}</p><p>This code expires in 15 minutes.</p>`
   );
 
-  return res.json({ message: "If the email is registered and unverified, a new verification link has been sent." });
+  return res.json({ message: "If the email is registered and unverified, a new verification code has been sent." });
 };
 
 // Lets a stuck-unverified user (wrong/unreachable email at registration) fix it
@@ -287,19 +289,18 @@ export const changeUnverifiedEmail: RequestHandler = async (req, res) => {
     }
   }
 
-  const emailVerificationToken = createRandomToken();
-  const emailVerificationTokenExpires = new Date(Date.now() + 1000 * 60 * 60 * 24);
+  const emailVerificationToken = createVerificationCode();
+  const emailVerificationTokenExpires = new Date(Date.now() + 1000 * 60 * 15);
 
   await prisma.user.update({
     where: { id: user.id },
     data: { email: newEmail, emailVerificationToken, emailVerificationTokenExpires },
   });
 
-  const verifyUrl = `${frontendUrl}/verify-email?token=${encodeURIComponent(emailVerificationToken)}`;
   void sendEmail(
     newEmail,
     "Verify your Club Connect email",
-    `<p>Hi ${user.name},</p><p>Click the link below to verify your email address:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p><p>This link expires in 24 hours.</p>`
+    `<p>Hi ${user.name},</p><p>Your verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${emailVerificationToken}</p><p>This code expires in 15 minutes.</p>`
   );
 
   return res.json({ message: "Email updated. Please check your new inbox to verify your account." });
