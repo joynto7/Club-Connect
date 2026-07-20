@@ -46,6 +46,12 @@ const resendVerificationSchema = z.object({
   email: z.string().email(),
 });
 
+const changeUnverifiedEmailSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  newEmail: z.string().email(),
+});
+
 const accessTokenSecret: Secret = process.env.JWT_ACCESS_TOKEN_SECRET ?? "replace-with-secret";
 const refreshTokenSecret: Secret = process.env.JWT_REFRESH_TOKEN_SECRET ?? "replace-with-secret";
 const accessTokenExpiresIn = process.env.ACCESS_TOKEN_EXPIRES_IN ?? "15m";
@@ -222,6 +228,55 @@ export const resendVerification: RequestHandler = async (req, res) => {
   );
 
   return res.json({ message: "If the email is registered and unverified, a new verification link has been sent." });
+};
+
+// Lets a stuck-unverified user (wrong/unreachable email at registration) fix it
+// themselves. Requires the password to prove ownership, since normal login is
+// blocked pre-verification and there is no other way to authenticate them.
+export const changeUnverifiedEmail: RequestHandler = async (req, res) => {
+  const parseResult = changeUnverifiedEmailSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ errors: parseResult.error.format() });
+  }
+
+  const { email, password, newEmail } = parseResult.data;
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    return res.status(401).json({ error: "Invalid email or password" });
+  }
+
+  const passwordMatches = await bcrypt.compare(password, user.password);
+  if (!passwordMatches) {
+    return res.status(401).json({ error: "Invalid email or password" });
+  }
+
+  if (user.emailVerified) {
+    return res.status(400).json({ error: "This account is already verified. Please log in." });
+  }
+
+  if (newEmail !== user.email) {
+    const existing = await prisma.user.findUnique({ where: { email: newEmail } });
+    if (existing) {
+      return res.status(409).json({ error: "Email is already registered" });
+    }
+  }
+
+  const emailVerificationToken = createRandomToken();
+  const emailVerificationTokenExpires = new Date(Date.now() + 1000 * 60 * 60 * 24);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { email: newEmail, emailVerificationToken, emailVerificationTokenExpires },
+  });
+
+  const changeVerifyUrl = `${frontendUrl}/verify-email?token=${encodeURIComponent(emailVerificationToken)}`;
+  await sendEmail(
+    newEmail,
+    "Verify your Club Connect email",
+    `<p>Hi ${user.name},</p><p>Click the link below to verify your email address:</p><p><a href="${changeVerifyUrl}">${changeVerifyUrl}</a></p><p>This link expires in 24 hours.</p>`
+  );
+
+  return res.json({ message: "Email updated. Please check your new inbox to verify your account." });
 };
 
 export const login: RequestHandler = async (req, res) => {

@@ -9,6 +9,7 @@ import {
   resetPassword,
   verifyEmail,
   resendVerification,
+  changeUnverifiedEmail,
   whoAmI,
   getSessions,
   revokeSession,
@@ -46,6 +47,7 @@ router.post("/logout", logout);
 router.post("/refresh-token", authLimiter, refreshToken);
 router.get("/verify-email", verifyEmail);
 router.post("/resend-verification", authLimiter, resendVerification);
+router.post("/change-unverified-email", strictLimiter, changeUnverifiedEmail);
 router.post("/request-password-reset", authLimiter, requestPasswordReset);
 router.post("/reset-password", authLimiter, resetPassword);
 router.get("/me", authenticateJWT, whoAmI);
