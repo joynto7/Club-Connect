@@ -45,7 +45,7 @@ export default function FileUpload({ value, onChange, type, label }: Props) {
       }
 
       const data = (await res.json()) as { url: string };
-      onChange(`${API_URL}${data.url}`);
+      onChange(data.url.startsWith("http") ? data.url : `${API_URL}${data.url}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
