@@ -179,6 +179,13 @@ export default function LoginPage() {
                 </div>
               )}
             </div>
+
+            <Link
+              href={`/verify-email?email=${encodeURIComponent(getValues("email"))}`}
+              className="block text-sm font-semibold text-[#EBA814] hover:underline"
+            >
+              Enter verification code
+            </Link>
           </div>
         )}
 

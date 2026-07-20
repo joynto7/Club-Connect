@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -28,7 +29,7 @@ const registerSchema = z.object({
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
-  const [serverMessage, setServerMessage] = useState<string | null>(null);
+  const router = useRouter();
   const [apiError, setApiError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -36,12 +37,10 @@ export default function RegisterPage() {
   const mutation = useMutation({
     mutationFn: registerUser,
     onSuccess(data) {
-      setServerMessage(data.message || "Registration successful! Please verify your email.");
-      setApiError(null);
+      router.push(`/verify-email?email=${encodeURIComponent(data.user.email)}`);
     },
     onError(error) {
       setApiError(getApiErrorMessage(error));
-      setServerMessage(null);
     },
   });
 
@@ -82,7 +81,6 @@ export default function RegisterPage() {
         </h2>
         <p className="text-gray-500 mb-8 text-sm text-center">Sign up to join Club Connect</p>
 
-        {serverMessage && <div className="p-3 mb-6 bg-green-50 text-green-700 rounded-xl text-sm border border-green-100">{serverMessage}</div>}
         {apiError && <div className="p-3 mb-6 bg-red-50 text-red-700 rounded-xl text-sm border border-red-100">{apiError}</div>}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
