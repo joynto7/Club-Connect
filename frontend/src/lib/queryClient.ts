@@ -11,6 +11,8 @@ export const queryClient = new QueryClient({
       staleTime: 1000 * 60 * 2,
     },
     mutations: {
+      // A mutation's own onError fully replaces this default (not both firing) —
+      // define onError: () => {} on a specific mutation to opt out of the toast.
       onError: (err) => {
         toast.error(getApiErrorMessage(err));
       },
