@@ -171,7 +171,7 @@ export default function LoginPage() {
                         newEmail,
                       })
                     }
-                    disabled={changeEmailMutation.isPending || !newEmail}
+                    disabled={changeEmailMutation.isPending || !z.string().email().safeParse(newEmail).success}
                     className="px-4 py-2 bg-[#EBA814] hover:bg-[#D99810] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-60"
                   >
                     {changeEmailMutation.isPending ? "Updating…" : "Update"}
