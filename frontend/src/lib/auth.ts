@@ -52,6 +52,26 @@ export async function resetPassword(payload: PasswordResetPayload) {
   return response.data;
 }
 
+export type ResendVerificationPayload = {
+  email: string;
+};
+
+export async function resendVerification(payload: ResendVerificationPayload) {
+  const response = await api.post<{ message: string }>("/auth/resend-verification", payload);
+  return response.data;
+}
+
+export type ChangeUnverifiedEmailPayload = {
+  email: string;
+  password: string;
+  newEmail: string;
+};
+
+export async function changeUnverifiedEmail(payload: ChangeUnverifiedEmailPayload) {
+  const response = await api.post<{ message: string }>("/auth/change-unverified-email", payload);
+  return response.data;
+}
+
 // ── Profile ──────────────────────────────────────────────────────
 export type UpdateProfilePayload = {
   name?: string;

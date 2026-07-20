@@ -8,7 +8,10 @@ import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { loginUser, login2FA, getApiErrorMessage, buildAuthState, type LoginResponse } from "@/lib/auth";
+import {
+  loginUser, login2FA, getApiErrorMessage, buildAuthState, type LoginResponse,
+  resendVerification, changeUnverifiedEmail,
+} from "@/lib/auth";
 import { setAuthState } from "@/lib/tokenStorage";
 import { Mail, Lock, Eye, EyeOff, LogIn, Smartphone } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +23,11 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+// Mirrors the exact string backend/src/controllers/authController.ts's login
+// handler returns for an unverified account. No shared package between the
+// two apps to enforce this — kept in sync by hand.
+const EMAIL_NOT_VERIFIED_MESSAGE = "Please verify your email before logging in.";
+
 export default function LoginPage() {
   const router = useRouter();
   const [apiError, setApiError] = useState<string | null>(null);
@@ -27,6 +35,8 @@ export default function LoginPage() {
   const [twoFAStep, setTwoFAStep] = useState(false);
   const [tempToken, setTempToken] = useState("");
   const [twoFACode, setTwoFACode] = useState("");
+  const [showChangeEmail, setShowChangeEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
 
   const mutation = useMutation({
     mutationFn: loginUser,
@@ -64,9 +74,33 @@ export default function LoginPage() {
     },
   });
 
+  const resendMutation = useMutation({
+    mutationFn: resendVerification,
+    onSuccess(data) {
+      toast.success(data.message);
+    },
+    onError(error) {
+      toast.error(getApiErrorMessage(error));
+    },
+  });
+
+  const changeEmailMutation = useMutation({
+    mutationFn: changeUnverifiedEmail,
+    onSuccess(data) {
+      toast.success(data.message);
+      setApiError(null);
+      setShowChangeEmail(false);
+      setNewEmail("");
+    },
+    onError(error) {
+      toast.error(getApiErrorMessage(error));
+    },
+  });
+
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -99,6 +133,54 @@ export default function LoginPage() {
         <p className="text-gray-500 mb-8 text-sm text-center font-medium">Login to continue to Club Connect</p>
 
         {apiError && <div className="p-3 mb-6 bg-red-50 text-red-700 rounded-xl text-sm border border-red-100">{apiError}</div>}
+
+        {apiError === EMAIL_NOT_VERIFIED_MESSAGE && (
+          <div className="p-4 mb-6 bg-amber-50 rounded-xl border border-amber-200 space-y-3">
+            <button
+              type="button"
+              onClick={() => resendMutation.mutate({ email: getValues("email") })}
+              disabled={resendMutation.isPending}
+              className="text-sm font-semibold text-[#EBA814] hover:underline disabled:opacity-60"
+            >
+              {resendMutation.isPending ? "Sending…" : "Resend verification email"}
+            </button>
+
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowChangeEmail((v) => !v)}
+                className="text-sm font-semibold text-[#EBA814] hover:underline"
+              >
+                Wrong email? Change it
+              </button>
+              {showChangeEmail && (
+                <div className="flex gap-2 mt-2">
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="Corrected email address"
+                    className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-[#EBA814]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      changeEmailMutation.mutate({
+                        email: getValues("email"),
+                        password: getValues("password"),
+                        newEmail,
+                      })
+                    }
+                    disabled={changeEmailMutation.isPending || !newEmail}
+                    className="px-4 py-2 bg-[#EBA814] hover:bg-[#D99810] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-60"
+                  >
+                    {changeEmailMutation.isPending ? "Updating…" : "Update"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 2FA Step */}
         {twoFAStep ? (
