@@ -81,12 +81,15 @@ const sendEmail = async (to: string, subject: string, html: string) => {
     if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
       const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT ?? 587),
+        port: Number(process.env.SMTP_PORT) || 587,
         secure: false,
         auth: {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS,
         },
+        connectionTimeout: 10_000,
+        greetingTimeout: 10_000,
+        socketTimeout: 10_000,
       });
 
       await transporter.sendMail({
@@ -149,7 +152,7 @@ export const register: RequestHandler = async (req, res) => {
   });
 
   const verifyUrl = `${frontendUrl}/verify-email?token=${encodeURIComponent(emailVerificationToken)}`;
-  await sendEmail(
+  void sendEmail(
     email,
     "Verify your Club Connect email",
     `<p>Hi ${name},</p><p>Click the link below to verify your email address:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p><p>This link expires in 24 hours.</p>`
@@ -221,7 +224,7 @@ export const resendVerification: RequestHandler = async (req, res) => {
   });
 
   const verifyUrl = `${frontendUrl}/verify-email?token=${encodeURIComponent(emailVerificationToken)}`;
-  await sendEmail(
+  void sendEmail(
     user.email,
     "Verify your Club Connect email",
     `<p>Hi ${user.name},</p><p>Click the link below to verify your email address:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p><p>This link expires in 24 hours.</p>`
@@ -293,7 +296,7 @@ export const changeUnverifiedEmail: RequestHandler = async (req, res) => {
   });
 
   const verifyUrl = `${frontendUrl}/verify-email?token=${encodeURIComponent(emailVerificationToken)}`;
-  await sendEmail(
+  void sendEmail(
     newEmail,
     "Verify your Club Connect email",
     `<p>Hi ${user.name},</p><p>Click the link below to verify your email address:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p><p>This link expires in 24 hours.</p>`
@@ -501,7 +504,7 @@ export const requestPasswordReset: RequestHandler = async (req, res) => {
   });
 
   const resetUrl = `${frontendUrl}/reset-password?token=${encodeURIComponent(passwordResetToken)}`;
-  await sendEmail(
+  void sendEmail(
     user.email,
     "Club Connect password reset",
     `<p>Hi ${user.name},</p><p>Reset your password by clicking the link below:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>The link is valid for one hour.</p>`
