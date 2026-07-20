@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Upload, X, ImageIcon, Loader2 } from "lucide-react";
 import { getAuthState } from "@/lib/tokenStorage";
+import { toast } from "sonner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:5001";
 
@@ -47,7 +48,9 @@ export default function FileUpload({ value, onChange, type, label }: Props) {
       const data = (await res.json()) as { url: string };
       onChange(data.url.startsWith("http") ? data.url : `${API_URL}${data.url}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setUploading(false);
     }

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Toaster } from "sonner";
 import Providers from "./providers";
 import "./globals.css";
 
@@ -63,12 +62,10 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="theme-color" content="#EBA814" />
-        <link rel="apple-touch-icon" href="/icon-192.svg" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>
           {children}
-          <Toaster richColors position="top-right" closeButton />
         </Providers>
       </body>
     </html>

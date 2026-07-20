@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { requestPasswordReset, getApiErrorMessage } from "@/lib/auth";
+import { toast } from "sonner";
 
 const forgotPasswordSchema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -25,8 +26,10 @@ export default function ForgotPasswordPage() {
       setApiError(null);
     },
     onError(error) {
-      setApiError(getApiErrorMessage(error));
+      const msg = getApiErrorMessage(error);
+      setApiError(msg);
       setServerMessage(null);
+      toast.error(msg);
     },
   });
 

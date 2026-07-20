@@ -9,6 +9,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { registerUser, getApiErrorMessage } from "@/lib/auth";
 import { Mail, Lock, User, Eye, EyeOff, Building2, GraduationCap } from "lucide-react";
+import { toast } from "sonner";
 import PasswordStrengthIndicator from "@/components/shared/PasswordStrengthIndicator";
 import LogoIcon from "@/components/shared/LogoIcon";
 
@@ -40,7 +41,9 @@ export default function RegisterPage() {
       router.push(`/verify-email?email=${encodeURIComponent(data.user.email)}`);
     },
     onError(error) {
-      setApiError(getApiErrorMessage(error));
+      const msg = getApiErrorMessage(error);
+      setApiError(msg);
+      toast.error(msg);
     },
   });
 
