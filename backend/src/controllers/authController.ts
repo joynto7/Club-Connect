@@ -245,10 +245,33 @@ export const changeUnverifiedEmail: RequestHandler = async (req, res) => {
     return res.status(401).json({ error: "Invalid email or password" });
   }
 
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    const minutesLeft = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
+    return res.status(423).json({
+      error: `Account temporarily locked due to too many failed login attempts. Try again in ${minutesLeft} minute(s).`,
+    });
+  }
+
   const passwordMatches = await bcrypt.compare(password, user.password);
   if (!passwordMatches) {
+    const newAttempts = user.loginAttempts + 1;
+    const locked = newAttempts >= MAX_LOGIN_ATTEMPTS;
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        loginAttempts: newAttempts,
+        lockedUntil: locked ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000) : null,
+      },
+    });
+    if (locked) {
+      return res.status(423).json({
+        error: `Too many failed login attempts. Account locked for ${LOCKOUT_MINUTES} minutes.`,
+      });
+    }
     return res.status(401).json({ error: "Invalid email or password" });
   }
+
+  await prisma.user.update({ where: { id: user.id }, data: { loginAttempts: 0, lockedUntil: null } });
 
   if (user.emailVerified) {
     return res.status(400).json({ error: "This account is already verified. Please log in." });
@@ -269,11 +292,11 @@ export const changeUnverifiedEmail: RequestHandler = async (req, res) => {
     data: { email: newEmail, emailVerificationToken, emailVerificationTokenExpires },
   });
 
-  const changeVerifyUrl = `${frontendUrl}/verify-email?token=${encodeURIComponent(emailVerificationToken)}`;
+  const verifyUrl = `${frontendUrl}/verify-email?token=${encodeURIComponent(emailVerificationToken)}`;
   await sendEmail(
     newEmail,
     "Verify your Club Connect email",
-    `<p>Hi ${user.name},</p><p>Click the link below to verify your email address:</p><p><a href="${changeVerifyUrl}">${changeVerifyUrl}</a></p><p>This link expires in 24 hours.</p>`
+    `<p>Hi ${user.name},</p><p>Click the link below to verify your email address:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p><p>This link expires in 24 hours.</p>`
   );
 
   return res.json({ message: "Email updated. Please check your new inbox to verify your account." });
