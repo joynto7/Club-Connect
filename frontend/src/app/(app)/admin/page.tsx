@@ -4,14 +4,19 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Users, Users2, Calendar, Flag, Settings, BarChart2, ChevronRight, FileText } from "lucide-react";
 import { getAdminStats } from "@/lib/admin";
+import { getAuthState } from "@/lib/tokenStorage";
+import { hasCapability, type Capability } from "@/lib/permissions";
 
-const sections = [
+const sections: Array<{
+  href: string; icon: React.ReactNode; label: string; description: string; color: string; capability?: Capability;
+}> = [
   {
     href: "/admin/users",
     icon: <Users size={22} />,
     label: "User Management",
     description: "Search, suspend, activate, and change roles for all users.",
     color: "bg-blue-50 text-blue-600",
+    capability: "manageUsers",
   },
   {
     href: "/admin/clubs",
@@ -40,6 +45,7 @@ const sections = [
     label: "System Settings",
     description: "Configure platform-wide key/value settings.",
     color: "bg-yellow-50 text-yellow-600",
+    capability: "viewSettings",
   },
   {
     href: "/analytics",
@@ -59,6 +65,8 @@ const sections = [
 
 export default function AdminPanelPage() {
   const { data } = useQuery({ queryKey: ["admin-stats"], queryFn: getAdminStats });
+  const role = getAuthState()?.user.role ?? "";
+  const visibleSections = sections.filter((s) => !s.capability || hasCapability(role, s.capability));
 
   const counts = data?.counts;
 
@@ -92,7 +100,7 @@ export default function AdminPanelPage() {
 
       {/* Navigation cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sections.map((s) => (
+        {visibleSections.map((s) => (
           <Link
             key={s.href}
             href={s.href}
