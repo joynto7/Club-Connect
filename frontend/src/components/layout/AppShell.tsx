@@ -8,7 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
   LayoutDashboard, CalendarClock, Users2, IdCard, User, History, LogOut,
-  Menu, Building2, Package, BookMarked, ChevronRight,
+  Menu, Building2, Package, BookMarked, ChevronRight, ChevronDown,
   Megaphone, Settings, SlidersHorizontal, BarChart2, ShieldCheck, Monitor,
   FileText, ScrollText, LayoutGrid, UserCog, Activity,
   PanelLeftClose, PanelLeftOpen, Command, Rss, Trophy, CalendarDays, CreditCard,
@@ -131,6 +131,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({ Main: true });
 
   useEffect(() => {
     const auth = getAuthState();
@@ -138,12 +139,45 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     setUser(auth.user);
     const stored = localStorage.getItem("cc-sidebar-collapsed");
     if (stored === "true") setCollapsed(true);
+    const storedGroups = localStorage.getItem("cc-sidebar-groups");
+    if (storedGroups) {
+      try {
+        setExpandedGroups((prev) => ({ ...prev, ...JSON.parse(storedGroups) }));
+      } catch {
+        // Ignore malformed localStorage value — keep the default.
+      }
+    }
   }, [router]);
+
+  // Auto-expand whichever group contains the page the user is currently on,
+  // so a direct link/reload never lands on a page whose own group is hidden.
+  useEffect(() => {
+    if (!user) return;
+    const groups = getNavGroups(user.role);
+    const activeGroup = groups.find((g) =>
+      g.items.some((item) => pathname === item.href || (!item.exact && pathname.startsWith(item.href + "/")))
+    );
+    if (!activeGroup) return;
+    setExpandedGroups((prev) => {
+      if (prev[activeGroup.label]) return prev;
+      const next = { ...prev, [activeGroup.label]: true };
+      localStorage.setItem("cc-sidebar-groups", JSON.stringify(next));
+      return next;
+    });
+  }, [pathname, user]);
 
   const toggleCollapsed = () => {
     setCollapsed((v) => {
       const next = !v;
       localStorage.setItem("cc-sidebar-collapsed", String(next));
+      return next;
+    });
+  };
+
+  const toggleGroup = (label: string) => {
+    setExpandedGroups((prev) => {
+      const next = { ...prev, [label]: !prev[label] };
+      localStorage.setItem("cc-sidebar-groups", JSON.stringify(next));
       return next;
     });
   };
@@ -200,45 +234,55 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Nav */}
       <nav className="flex-1 px-2 py-2 space-y-4 overflow-y-auto">
-        {navGroups.map((group) => (
-          <div key={group.label}>
-            {(!collapsed || mobile) && (
-              <p className="px-3 mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-zinc-600">
-                {group.label}
-              </p>
-            )}
-            <div className="space-y-0.5">
-              {group.items.map((item) => {
-                const active = pathname === item.href || (!item.exact && pathname.startsWith(item.href + "/"));
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    title={collapsed && !mobile ? item.label : undefined}
-                    className={`flex items-center gap-3 rounded-xl text-sm font-medium transition-all group ${
-                      collapsed && !mobile ? "justify-center px-2 py-3" : "px-3 py-2.5"
-                    } ${
-                      active
-                        ? "bg-[#EBA814]/10 text-[#EBA814]"
-                        : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-white"
-                    }`}
-                  >
-                    <span className={`flex-shrink-0 ${active ? "text-[#EBA814]" : "text-gray-400 dark:text-zinc-500 group-hover:text-gray-600 dark:group-hover:text-white"}`}>
-                      {item.icon}
-                    </span>
-                    {(!collapsed || mobile) && (
-                      <>
-                        {item.label}
-                        {active && <ChevronRight size={14} className="ml-auto text-[#EBA814]" />}
-                      </>
-                    )}
-                  </Link>
-                );
-              })}
+        {navGroups.map((group) => {
+          const expanded = expandedGroups[group.label] ?? false;
+          return (
+            <div key={group.label}>
+              {(!collapsed || mobile) && (
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.label)}
+                  className="w-full flex items-center justify-between px-3 mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-zinc-600 hover:text-gray-600 dark:hover:text-zinc-400"
+                >
+                  {group.label}
+                  <ChevronDown size={12} className={`transition-transform ${expanded ? "" : "-rotate-90"}`} />
+                </button>
+              )}
+              {((collapsed && !mobile) || expanded) && (
+                <div className="space-y-0.5">
+                  {group.items.map((item) => {
+                    const active = pathname === item.href || (!item.exact && pathname.startsWith(item.href + "/"));
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setSidebarOpen(false)}
+                        title={collapsed && !mobile ? item.label : undefined}
+                        className={`flex items-center gap-3 rounded-xl text-sm font-medium transition-all group ${
+                          collapsed && !mobile ? "justify-center px-2 py-3" : "px-3 py-2.5"
+                        } ${
+                          active
+                            ? "bg-[#EBA814]/10 text-[#EBA814]"
+                            : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-white"
+                        }`}
+                      >
+                        <span className={`flex-shrink-0 ${active ? "text-[#EBA814]" : "text-gray-400 dark:text-zinc-500 group-hover:text-gray-600 dark:group-hover:text-white"}`}>
+                          {item.icon}
+                        </span>
+                        {(!collapsed || mobile) && (
+                          <>
+                            {item.label}
+                            {active && <ChevronRight size={14} className="ml-auto text-[#EBA814]" />}
+                          </>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Bottom: theme + collapse + user */}
