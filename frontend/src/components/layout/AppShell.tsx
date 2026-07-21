@@ -38,16 +38,21 @@ function getNavGroups(role: string): NavGroup[] {
       label: "Community",
       items: [
         { label: "Members",       href: "/members",       icon: <IdCard size={18} /> },
-        { label: "Venues",        href: "/venues",        icon: <Building2 size={18} /> },
-        { label: "Resources",     href: "/resources",     icon: <Package size={18} /> },
         { label: "Leaderboard",   href: "/leaderboard",   icon: <Trophy size={18} /> },
         { label: "Announcements", href: "/announcements", icon: <Megaphone size={18} /> },
       ],
     },
     {
+      label: "Bookings",
+      items: [
+        { label: "Venues",      href: "/venues",      icon: <Building2 size={18} /> },
+        { label: "Resources",   href: "/resources",   icon: <Package size={18} /> },
+        { label: "My Bookings", href: "/my-bookings", icon: <BookMarked size={18} /> },
+      ],
+    },
+    {
       label: "Personal",
       items: [
-        { label: "My Bookings",   href: "/my-bookings", icon: <BookMarked size={18} /> },
         { label: "My Payments",   href: "/my-payments", icon: <CreditCard size={18} /> },
         { label: "My Profile",    href: "/profile",     icon: <User size={18} /> },
         { label: "My Activities", href: "/activities",  icon: <History size={18} /> },
