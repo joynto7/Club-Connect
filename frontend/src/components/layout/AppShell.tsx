@@ -244,7 +244,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   type="button"
                   onClick={() => toggleGroup(group.label)}
                   aria-expanded={expanded}
-                  className="w-full flex items-center justify-between px-3 mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-zinc-600 hover:text-gray-600 dark:hover:text-zinc-400"
+                  className="w-full flex items-center justify-between px-3 mb-1 text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-zinc-600 hover:text-gray-600 dark:hover:text-zinc-400"
                 >
                   {group.label}
                   <ChevronDown size={12} aria-hidden="true" className={`transition-transform ${expanded ? "" : "-rotate-90"}`} />
