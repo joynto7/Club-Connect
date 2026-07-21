@@ -132,6 +132,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({ Main: true });
+  const [syncedPathname, setSyncedPathname] = useState<string | null>(null);
 
   useEffect(() => {
     const auth = getAuthState();
@@ -152,20 +153,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   // Auto-expand whichever group contains the page the user is currently on,
   // so a direct link/reload never lands on a page whose own group is hidden.
-  useEffect(() => {
-    if (!user) return;
-    const groups = getNavGroups(user.role);
-    const activeGroup = groups.find((g) =>
+  // Adjusted directly during render (not via effect+setState) — see
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  if (user && pathname !== syncedPathname) {
+    setSyncedPathname(pathname);
+    const activeGroup = getNavGroups(user.role).find((g) =>
       g.items.some((item) => pathname === item.href || (!item.exact && pathname.startsWith(item.href + "/")))
     );
-    if (!activeGroup) return;
-    setExpandedGroups((prev) => {
-      if (prev[activeGroup.label]) return prev;
-      const next = { ...prev, [activeGroup.label]: true };
+    if (activeGroup && !expandedGroups[activeGroup.label]) {
+      const next = { ...expandedGroups, [activeGroup.label]: true };
+      setExpandedGroups(next);
       localStorage.setItem("cc-sidebar-groups", JSON.stringify(next));
-      return next;
-    });
-  }, [pathname, user]);
+    }
+  }
 
   const toggleCollapsed = () => {
     setCollapsed((v) => {
