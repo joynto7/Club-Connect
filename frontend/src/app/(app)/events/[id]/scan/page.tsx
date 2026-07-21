@@ -4,6 +4,7 @@ import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { getEvent, scanTicket, type ScanResult } from "@/lib/events";
+import { getMyClubs } from "@/lib/auth";
 import { getAuthState } from "@/lib/tokenStorage";
 import { ArrowLeft, CheckCircle2, XCircle, ScanLine, Keyboard } from "lucide-react";
 import { Html5QrcodeScanner } from "html5-qrcode";
@@ -17,6 +18,13 @@ export default function ScanPage({ params }: { params: Promise<{ id: string }> }
     queryFn: () => getEvent(id),
   });
 
+  const isAdmin = auth?.user.role === "UNIVERSITY_ADMIN" || auth?.user.role === "SYSTEM_ADMIN";
+  const { data: myClubsData } = useQuery({
+    queryKey: ["my-clubs"],
+    queryFn: getMyClubs,
+    enabled: !!auth && !isAdmin,
+  });
+
   const [result, setResult]         = useState<ScanResult | null>(null);
   const [error, setError]           = useState<string | null>(null);
   const [scanning, setScanning]     = useState(false);
@@ -25,10 +33,9 @@ export default function ScanPage({ params }: { params: Promise<{ id: string }> }
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const scannerDivId = "qr-reader";
 
-  const isOfficer =
-    auth?.user.role === "CLUB_OFFICER" ||
-    auth?.user.role === "UNIVERSITY_ADMIN" ||
-    auth?.user.role === "SYSTEM_ADMIN";
+  const isOfficer = isAdmin || (myClubsData?.clubs ?? []).some(
+    (c) => c.id === data?.event.clubId && (c.role === "PRESIDENT" || c.role === "COORDINATOR")
+  );
 
   async function processToken(token: string) {
     setResult(null);
@@ -74,6 +81,10 @@ export default function ScanPage({ params }: { params: Promise<{ id: string }> }
     return () => { stopScanner(); };
   }, []);
 
+  if (isLoading) {
+    return <div className="max-w-md mx-auto h-40 bg-gray-100 rounded-2xl animate-pulse mt-6" />;
+  }
+
   if (!auth || !isOfficer) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
@@ -81,10 +92,6 @@ export default function ScanPage({ params }: { params: Promise<{ id: string }> }
         <Link href={`/events/${id}`} className="text-[#EBA814] text-sm hover:underline mt-2 block">← Back to Event</Link>
       </div>
     );
-  }
-
-  if (isLoading) {
-    return <div className="max-w-md mx-auto h-40 bg-gray-100 rounded-2xl animate-pulse mt-6" />;
   }
 
   const event = data?.event;

@@ -9,7 +9,7 @@ import {
   type EventStatus, type EventTicket,
 } from "@/lib/events";
 import { getMyFeedback, submitFeedback } from "@/lib/analytics";
-import { getApiErrorMessage } from "@/lib/auth";
+import { getApiErrorMessage, getMyClubs } from "@/lib/auth";
 import { getAuthState } from "@/lib/tokenStorage";
 import {
   ArrowLeft, Calendar, MapPin, Users, Clock, UserCheck,
@@ -130,6 +130,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     enabled: !!auth && _eventEnded && _wasRegistered,
   });
 
+  const isAdmin = auth?.user.role === "UNIVERSITY_ADMIN" || auth?.user.role === "SYSTEM_ADMIN";
+  const { data: myClubsData } = useQuery({
+    queryKey: ["my-clubs"],
+    queryFn: getMyClubs,
+    enabled: !!auth && !isAdmin,
+  });
+
   const feedbackMutation = useMutation({
     mutationFn: () => submitFeedback(id, {
       rating: feedbackRating,
@@ -175,8 +182,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const hasWaitlist    = event.maxWaitlist != null && event.maxWaitlist > 0;
   const waitlistFull   = hasWaitlist && event.maxWaitlist != null && liveWaitlistCount >= event.maxWaitlist;
 
-  const isOfficer = auth?.user.role === "CLUB_OFFICER" || auth?.user.role === "UNIVERSITY_ADMIN" || auth?.user.role === "SYSTEM_ADMIN";
-  const isEventOfficer = isOfficer; // simplified — manage page does server-side check
+  const isOfficer = isAdmin || (myClubsData?.clubs ?? []).some(
+    (c) => c.id === event.clubId && (c.role === "PRESIDENT" || c.role === "COORDINATOR")
+  );
+  const isEventOfficer = isOfficer;
 
   const isRegistered  = myRegistration?.status === "REGISTERED";
   const onWaitlist    = isRegistered && myRegistration?.isWaitlisted;

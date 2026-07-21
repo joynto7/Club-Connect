@@ -22,6 +22,7 @@ import {
   type ClubPost,
 } from "@/lib/social";
 import { getAuthState } from "@/lib/tokenStorage";
+import { getClub } from "@/lib/clubs";
 import RichTextEditor from "@/components/shared/RichTextEditor";
 import RichTextDisplay from "@/components/shared/RichTextDisplay";
 
@@ -291,14 +292,11 @@ export default function DiscussPage() {
   // We need the club ID — fetch club data using slug
   const { data: clubData } = useQuery({
     queryKey: ["club", slug],
-    queryFn: async () => {
-      const { api } = await import("@/lib/axios");
-      const { data } = await api.get(`/clubs/${slug}`);
-      return data as { club: { id: string; name: string; slug: string } };
-    },
+    queryFn: () => getClub(slug),
   });
 
   const clubId = clubData?.club.id;
+  const myMembership = clubData?.myMembership ?? null;
 
   const { data: posts = [], isLoading } = useQuery({
     queryKey: ["club-posts", clubId],
@@ -332,10 +330,11 @@ export default function DiscussPage() {
     void qc.invalidateQueries({ queryKey: ["club-posts", clubId] });
   };
 
-  // Determine if current user is an officer
+  // Determine if current user is an officer of THIS club (not just any club)
   const isOfficer = auth?.user?.role === "UNIVERSITY_ADMIN" ||
     auth?.user?.role === "SYSTEM_ADMIN" ||
-    auth?.user?.role === "CLUB_OFFICER";
+    myMembership?.role === "PRESIDENT" ||
+    myMembership?.role === "COORDINATOR";
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">

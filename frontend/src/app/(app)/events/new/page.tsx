@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createEvent, EVENT_CATEGORIES } from "@/lib/events";
 import { listClubs } from "@/lib/clubs";
-import { getApiErrorMessage } from "@/lib/auth";
+import { getApiErrorMessage, getMyClubs } from "@/lib/auth";
 import { getAuthState } from "@/lib/tokenStorage";
 import { toast } from "sonner";
 import FileUpload from "@/components/shared/FileUpload";
@@ -63,13 +63,24 @@ export default function NewEventPage() {
   const [aiLoading, setAiLoading]   = useState(false);
   const [aiDone, setAiDone]         = useState(false);
 
+  const isAdmin = auth?.user.role === "UNIVERSITY_ADMIN" || auth?.user.role === "SYSTEM_ADMIN";
+
   const { data: clubsData } = useQuery({
     queryKey: ["clubs"],
     queryFn: () => listClubs(),
     staleTime: 60_000,
+    enabled: isAdmin,
+  });
+  const { data: myClubsData } = useQuery({
+    queryKey: ["my-clubs"],
+    queryFn: getMyClubs,
+    staleTime: 60_000,
+    enabled: !isAdmin,
   });
 
-  const officerClubs = (clubsData?.clubs ?? []).filter((c) => c.status === "ACTIVE");
+  const officerClubs = isAdmin
+    ? (clubsData?.clubs ?? []).filter((c) => c.status === "ACTIVE")
+    : (myClubsData?.clubs ?? []).filter((c) => c.role === "PRESIDENT" || c.role === "COORDINATOR");
 
   const { register, handleSubmit, getValues, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -161,7 +172,7 @@ export default function NewEventPage() {
     },
   });
 
-  const isOfficer = auth?.user.role === "CLUB_OFFICER" || auth?.user.role === "UNIVERSITY_ADMIN" || auth?.user.role === "SYSTEM_ADMIN";
+  const isOfficer = isAdmin || officerClubs.length > 0;
 
   if (!isOfficer) {
     return (

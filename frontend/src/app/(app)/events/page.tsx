@@ -8,6 +8,7 @@ import {
   listEvents, EVENT_CATEGORIES, EVENT_DATE_FILTERS, type Event,
 } from "@/lib/events";
 import { getAuthState } from "@/lib/tokenStorage";
+import { getMyClubs } from "@/lib/auth";
 import {
   Search, Calendar, MapPin, Users, Clock, Plus, ArrowRight,
 } from "lucide-react";
@@ -116,7 +117,16 @@ const gridVariants: Variants = {
 
 export default function EventsPage() {
   const auth = getAuthState();
-  const isOfficer = auth?.user.role === "CLUB_OFFICER" || auth?.user.role === "UNIVERSITY_ADMIN" || auth?.user.role === "SYSTEM_ADMIN";
+  const isAdmin = auth?.user.role === "UNIVERSITY_ADMIN" || auth?.user.role === "SYSTEM_ADMIN";
+  const { data: myClubsData } = useQuery({
+    queryKey: ["my-clubs"],
+    queryFn: getMyClubs,
+    enabled: !!auth && !isAdmin,
+    staleTime: 60_000,
+  });
+  const isOfficer = isAdmin || (myClubsData?.clubs ?? []).some(
+    (c) => c.role === "PRESIDENT" || c.role === "COORDINATOR"
+  );
 
   const [search,   setSearch]   = useState("");
   const [category, setCategory] = useState("All");
