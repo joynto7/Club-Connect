@@ -94,13 +94,6 @@ jobs:
           npm install -g vercel@latest
           vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
           vercel build --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
-          echo "--- DEBUG: .vercel/output contents ---"
-          find .vercel/output -maxdepth 3 2>&1 || echo "(.vercel/output missing entirely)"
-          echo "--- DEBUG: .next/standalone exists? ---"
-          test -d .next/standalone && echo "STANDALONE PRESENT" || echo "no standalone dir"
-          echo "--- DEBUG: .vercel/output/config.json ---"
-          cat .vercel/output/config.json 2>&1 || echo "(no config.json)"
-          echo "--- END DEBUG ---"
           vercel deploy --prebuilt --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
         working-directory: frontend
         env:
