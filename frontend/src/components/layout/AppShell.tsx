@@ -142,7 +142,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const storedGroups = localStorage.getItem("cc-sidebar-groups");
     if (storedGroups) {
       try {
-        setExpandedGroups((prev) => ({ ...prev, ...JSON.parse(storedGroups) }));
+        const parsed = JSON.parse(storedGroups);
+        setExpandedGroups((prev) => ({ ...prev, ...parsed }));
       } catch {
         // Ignore malformed localStorage value — keep the default.
       }
