@@ -7,12 +7,9 @@ import { log as auditLog } from "../lib/auditLog.ts";
 import { emitToAdmin } from "../lib/socket.ts";
 import { awardPoints } from "../services/pointsService.ts";
 import { fireWebhooks } from "../services/webhookService.ts";
+import { generateSlug } from "../lib/textHelpers.ts";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
-
-function generateSlug(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
 
 async function uniqueSlug(name: string, excludeId?: string): Promise<string> {
   const base = generateSlug(name);
@@ -36,6 +33,7 @@ async function isClubOfficer(userId: string, userRole: string, clubId: string): 
     (m.role === ClubRole.PRESIDENT || m.role === ClubRole.COORDINATOR)
   );
 }
+
 
 const MEMBER_SELECT = {
   id: true,
