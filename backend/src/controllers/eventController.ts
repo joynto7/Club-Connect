@@ -433,6 +433,7 @@ export const rejectEvent: RequestHandler = async (req, res) => {
 export const registerForEvent: RequestHandler = async (req, res) => {
   if (!req.user) return res.status(401).json({ error: "Not authenticated" });
   const id = req.params["id"] as string;
+  const userId = req.user.id;
 
   const event = await prisma.event.findUnique({ where: { id } });
   if (!event) return res.status(404).json({ error: "Event not found" });
@@ -444,32 +445,57 @@ export const registerForEvent: RequestHandler = async (req, res) => {
     return res.status(400).json({ error: "Event has already started" });
   }
 
-  const existing = await prisma.eventAttendance.findUnique({
-    where: { eventId_userId: { eventId: id, userId: req.user.id } },
+  // The capacity check and the attendance write used to be two separate
+  // queries with no lock between them — concurrent requests could both read
+  // confirmedCount < capacity before either committed, overbooking the event.
+  // A row lock on the event serializes registrations per-event so the count
+  // read inside is guaranteed fresh at write time.
+  const txResult = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT id FROM "Event" WHERE id = ${id} FOR UPDATE`;
+
+    const existing = await tx.eventAttendance.findUnique({
+      where: { eventId_userId: { eventId: id, userId } },
+    });
+    if (existing?.status === "REGISTERED") {
+      return { error: "already_registered" as const };
+    }
+
+    const confirmedCount = await tx.eventAttendance.count({
+      where: { eventId: id, status: "REGISTERED", isWaitlisted: false },
+    });
+
+    let isWaitlisted = false;
+    if (event.capacity !== null && confirmedCount >= event.capacity) {
+      if (event.maxWaitlist !== null) {
+        const waitlistCount = await tx.eventAttendance.count({
+          where: { eventId: id, status: "REGISTERED", isWaitlisted: true },
+        });
+        if (waitlistCount >= event.maxWaitlist) {
+          return { error: "waitlist_full" as const };
+        }
+      } else {
+        return { error: "capacity_reached" as const };
+      }
+      isWaitlisted = true;
+    }
+
+    const attendance = existing
+      ? await tx.eventAttendance.update({ where: { id: existing.id }, data: { status: "REGISTERED", isWaitlisted } })
+      : await tx.eventAttendance.create({ data: { eventId: id, userId, status: "REGISTERED", isWaitlisted } });
+
+    return { attendance, isWaitlisted };
   });
 
-  if (existing?.status === "REGISTERED") {
+  if (txResult.error === "already_registered") {
     return res.status(409).json({ error: "You are already registered for this event" });
   }
-
-  const confirmedCount = await prisma.eventAttendance.count({
-    where: { eventId: id, status: "REGISTERED", isWaitlisted: false },
-  });
-
-  let isWaitlisted = false;
-  if (event.capacity !== null && confirmedCount >= event.capacity) {
-    if (event.maxWaitlist !== null) {
-      const waitlistCount = await prisma.eventAttendance.count({
-        where: { eventId: id, status: "REGISTERED", isWaitlisted: true },
-      });
-      if (waitlistCount >= event.maxWaitlist) {
-        return res.status(400).json({ error: "Event is full and the waitlist is also full" });
-      }
-    } else {
-      return res.status(400).json({ error: "Event has reached capacity" });
-    }
-    isWaitlisted = true;
+  if (txResult.error === "waitlist_full") {
+    return res.status(400).json({ error: "Event is full and the waitlist is also full" });
   }
+  if (txResult.error === "capacity_reached") {
+    return res.status(400).json({ error: "Event has reached capacity" });
+  }
+  const { attendance, isWaitlisted } = txResult;
 
   // U8.5 — Conflict detection (soft check)
   let conflictWarning: string | undefined;
@@ -491,18 +517,6 @@ export const registerForEvent: RequestHandler = async (req, res) => {
     if (conflicts.length > 0) {
       conflictWarning = `You already have "${conflicts[0]!.event.title}" at this time.`;
     }
-  }
-
-  let attendance;
-  if (existing) {
-    attendance = await prisma.eventAttendance.update({
-      where: { id: existing.id },
-      data: { status: "REGISTERED", isWaitlisted },
-    });
-  } else {
-    attendance = await prisma.eventAttendance.create({
-      data: { eventId: id, userId: req.user.id, status: "REGISTERED", isWaitlisted },
-    });
   }
 
   const msg = isWaitlisted
