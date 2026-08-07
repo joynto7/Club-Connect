@@ -1,7 +1,6 @@
 import type { RequestHandler } from "express";
 import jwt from "jsonwebtoken";
-
-const accessTokenSecret: jwt.Secret = process.env.JWT_ACCESS_TOKEN_SECRET ?? "replace-with-secret";
+import { accessTokenSecret } from "../lib/jwtSecrets.ts";
 
 /** Attaches req.user if a valid token is present, but never blocks the request. */
 export const optionalAuth: RequestHandler = (req, _res, next) => {

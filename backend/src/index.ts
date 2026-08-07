@@ -30,6 +30,7 @@ import paymentRoutes from "./routes/payments.ts";
 import integrationRoutes from "./routes/integrations.ts";
 import swaggerSpec from "./lib/swagger.ts";
 import { logger } from "./lib/logger.ts";
+import { accessTokenSecret } from "./lib/jwtSecrets.ts";
 import { seedAchievements } from "./services/achievementService.ts";
 import { startReminderJob } from "./jobs/reminderJob.ts";
 import prisma from "./prisma.ts";
@@ -128,7 +129,7 @@ io.use((socket, next) => {
   const token = socket.handshake.auth["token"] as string | undefined;
   if (!token) return next(new Error("Unauthorized"));
   try {
-    const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as {
+    const payload = jwt.verify(token, accessTokenSecret) as {
       userId: string;
       role: string;
     };

@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { Role, MembershipStatus, ClubRole } from "@prisma/client";
 import prisma from "../prisma.ts";
 import { emitToEvent } from "../lib/socket.ts";
+import { accessTokenSecret } from "../lib/jwtSecrets.ts";
 import { awardPoints } from "../services/pointsService.ts";
 
 async function isEventOfficer(userId: string, userRole: string, eventId: string): Promise<boolean> {
@@ -49,7 +50,7 @@ export const getTicket: RequestHandler = async (req, res) => {
 
   const token = jwt.sign(
     { eventId, userId, type: "ticket" } satisfies Omit<TicketPayload, "iat" | "exp">,
-    process.env["JWT_ACCESS_TOKEN_SECRET"]!,
+    accessTokenSecret,
     { expiresIn: "24h" }
   );
 
@@ -75,7 +76,7 @@ export const scanTicket: RequestHandler = async (req, res) => {
 
   let payload: TicketPayload;
   try {
-    payload = jwt.verify(token, process.env["JWT_ACCESS_TOKEN_SECRET"]!) as TicketPayload;
+    payload = jwt.verify(token, accessTokenSecret) as TicketPayload;
   } catch {
     return res.status(400).json({ error: "Invalid or expired ticket" });
   }

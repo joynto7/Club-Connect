@@ -8,6 +8,7 @@ import { generateSecret, generateURI, verify as verifyOTP, verifySync as verifyO
 import qrcode from "qrcode";
 import prisma from "../prisma.ts";
 import { logger } from "../lib/logger.ts";
+import { accessTokenSecret, refreshTokenSecret } from "../lib/jwtSecrets.ts";
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
@@ -53,8 +54,6 @@ const changeUnverifiedEmailSchema = z.object({
   newEmail: z.string().email(),
 });
 
-const accessTokenSecret: Secret = process.env.JWT_ACCESS_TOKEN_SECRET ?? "replace-with-secret";
-const refreshTokenSecret: Secret = process.env.JWT_REFRESH_TOKEN_SECRET ?? "replace-with-secret";
 const accessTokenExpiresIn = process.env.ACCESS_TOKEN_EXPIRES_IN ?? "15m";
 const refreshTokenExpiresIn = process.env.REFRESH_TOKEN_EXPIRES_IN ?? "7d";
 const frontendUrl = process.env.FRONTEND_URL ?? "http://127.0.0.1:3000";
