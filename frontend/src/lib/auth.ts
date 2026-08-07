@@ -172,6 +172,13 @@ export async function login2FA(tempToken: string, token: string) {
   return r.data;
 }
 
+export async function exchangeGoogleOAuthCode(code: string) {
+  const r = await api.post<{ accessToken: string; refreshToken: string; user: { id: string; email: string; name: string; role: string } }>(
+    "/auth/google/exchange", { code }
+  );
+  return r.data;
+}
+
 export function getApiErrorMessage(error: unknown) {
   if (!error || typeof error !== "object") {
     return "An unexpected error occurred.";

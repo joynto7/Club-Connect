@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { setAuthState } from "@/lib/tokenStorage";
+import { exchangeGoogleOAuthCode, getApiErrorMessage } from "@/lib/auth";
 import { toast } from "sonner";
 
 export default function GoogleOAuthCallbackPage() {
@@ -26,26 +27,23 @@ export default function GoogleOAuthCallbackPage() {
       return;
     }
 
-    const accessToken = searchParams.get("accessToken");
-    const refreshToken = searchParams.get("refreshToken");
-    const userId = searchParams.get("userId");
-    const name = searchParams.get("name");
-    const email = searchParams.get("email");
-    const role = searchParams.get("role");
-
-    if (!accessToken || !refreshToken || !userId || !name || !email || !role) {
-      toast.error("Sign-in failed — missing session data.");
+    const code = searchParams.get("code");
+    if (!code) {
+      toast.error("Sign-in failed — missing exchange code.");
       router.replace("/login");
       return;
     }
 
-    setAuthState({
-      tokens: { accessToken, refreshToken },
-      user: { id: userId, name, email, role },
-    });
-
-    toast.success(`Welcome, ${name}!`);
-    router.replace("/dashboard");
+    exchangeGoogleOAuthCode(code)
+      .then(({ accessToken, refreshToken, user }) => {
+        setAuthState({ tokens: { accessToken, refreshToken }, user });
+        toast.success(`Welcome, ${user.name}!`);
+        router.replace("/dashboard");
+      })
+      .catch((err) => {
+        toast.error(getApiErrorMessage(err));
+        router.replace("/login");
+      });
   }, [router, searchParams]);
 
   return (

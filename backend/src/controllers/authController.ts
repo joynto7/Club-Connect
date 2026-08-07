@@ -9,6 +9,7 @@ import qrcode from "qrcode";
 import prisma from "../prisma.ts";
 import { logger } from "../lib/logger.ts";
 import { accessTokenSecret, refreshTokenSecret } from "../lib/jwtSecrets.ts";
+import { hashRefreshToken, verifyRefreshToken } from "../lib/refreshTokenHash.ts";
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
@@ -60,16 +61,20 @@ const frontendUrl = process.env.FRONTEND_URL ?? "http://127.0.0.1:3000";
 const appUrl = process.env.APP_URL ?? "http://127.0.0.1:5001";
 const skipEmailVerification = process.env.SKIP_EMAIL_VERIFICATION === "true";
 
+// jwt.sign's iat/exp only have second-granularity, so two tokens issued for the
+// same user within the same second are otherwise byte-identical — which made a
+// just-rotated-out refresh token silently still valid. jti forces uniqueness
+// per issuance regardless of timing.
 const createAccessToken = (user: { id: string; email: string; role: string }) =>
   jwt.sign(
-    { userId: user.id, email: user.email, role: user.role },
+    { userId: user.id, email: user.email, role: user.role, jti: crypto.randomUUID() },
     accessTokenSecret,
     { expiresIn: accessTokenExpiresIn } as SignOptions
   );
 
 const createRefreshToken = (user: { id: string; email: string; role: string }) =>
   jwt.sign(
-    { userId: user.id, email: user.email, role: user.role },
+    { userId: user.id, email: user.email, role: user.role, jti: crypto.randomUUID() },
     refreshTokenSecret,
     { expiresIn: refreshTokenExpiresIn } as SignOptions
   );
@@ -368,7 +373,7 @@ export const login: RequestHandler = async (req, res) => {
 
   const accessToken = createAccessToken(user);
   const refreshToken = createRefreshToken(user);
-  const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+  const refreshTokenHash = hashRefreshToken(refreshToken);
   const refreshTokenExpires = new Date(Date.now() + refreshTokenTtlMs());
 
   await prisma.user.update({
@@ -418,14 +423,14 @@ export const refreshToken: RequestHandler = async (req, res) => {
       return res.status(401).json({ error: "Refresh token expired" });
     }
 
-    const valid = await bcrypt.compare(parseResult.data.refreshToken, user.refreshToken);
+    const valid = verifyRefreshToken(parseResult.data.refreshToken, user.refreshToken);
     if (!valid) {
       return res.status(401).json({ error: "Refresh token invalid" });
     }
 
     const accessToken = createAccessToken(user);
     const newRefreshToken = createRefreshToken(user);
-    const refreshTokenHash = await bcrypt.hash(newRefreshToken, 10);
+    const refreshTokenHash = hashRefreshToken(newRefreshToken);
     const refreshTokenExpires = new Date(Date.now() + refreshTokenTtlMs());
 
     await prisma.user.update({
@@ -464,7 +469,7 @@ export const logout: RequestHandler = async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: payload.userId } });
 
     if (user?.refreshToken) {
-      const valid = await bcrypt.compare(parseResult.data.refreshToken, user.refreshToken);
+      const valid = verifyRefreshToken(parseResult.data.refreshToken, user.refreshToken);
       if (valid) {
         await prisma.user.update({
           where: { id: user.id },
@@ -678,11 +683,32 @@ export const disable2FA: RequestHandler = async (req, res) => {
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? "";
 const GOOGLE_REDIRECT_URI = `${process.env.APP_URL ?? "http://127.0.0.1:5001"}/auth/google/callback`;
+const isProd = process.env.NODE_ENV === "production";
+
+// Reads a single cookie value without pulling in cookie-parser for one field.
+function readCookie(req: { headers: { cookie?: string | undefined } }, name: string): string | undefined {
+  return req.headers.cookie
+    ?.split("; ")
+    .find((c) => c.startsWith(`${name}=`))
+    ?.slice(name.length + 1);
+}
 
 export const googleOAuthRedirect: RequestHandler = (_req, res) => {
   if (!GOOGLE_CLIENT_ID) {
     return res.status(503).json({ error: "Google OAuth not configured" });
   }
+  // Without a state parameter, an attacker can complete their own OAuth
+  // handshake, then get a victim to open /auth/google/callback?code=<attacker's
+  // code> — the victim's browser would complete the exchange and end up
+  // logged into the attacker's account (login CSRF). The state cookie ties
+  // the callback to the browser that actually started this redirect.
+  const state = crypto.randomBytes(24).toString("hex");
+  res.cookie("oauth_state", state, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: "lax",
+    maxAge: 5 * 60 * 1000,
+  });
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: GOOGLE_REDIRECT_URI,
@@ -690,6 +716,7 @@ export const googleOAuthRedirect: RequestHandler = (_req, res) => {
     scope: "openid email profile",
     access_type: "offline",
     prompt: "select_account",
+    state,
   });
   res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
 };
@@ -698,6 +725,13 @@ export const googleOAuthCallback: RequestHandler = async (req, res) => {
   const code = req.query["code"] as string | undefined;
   if (!code) {
     return res.redirect(`${frontendUrl}/login?error=google_cancelled`);
+  }
+
+  const returnedState = req.query["state"] as string | undefined;
+  const expectedState = readCookie(req, "oauth_state");
+  res.clearCookie("oauth_state");
+  if (!returnedState || !expectedState || returnedState !== expectedState) {
+    return res.redirect(`${frontendUrl}/login?error=google_oauth_failed`);
   }
 
   try {
@@ -764,39 +798,68 @@ export const googleOAuthCallback: RequestHandler = async (req, res) => {
       return res.redirect(`${frontendUrl}/login?error=account_suspended`);
     }
 
-    const accessToken = createAccessToken(user);
-    const refreshToken = createRefreshToken(user);
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
-    const refreshTokenExpires = new Date(Date.now() + refreshTokenTtlMs());
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { refreshToken: refreshTokenHash, refreshTokenExpires, loginAttempts: 0, lockedUntil: null },
-    });
-
-    const userAgent = req.headers["user-agent"] ?? null;
-    const ipAddress =
-      (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ??
-      req.socket.remoteAddress ??
-      null;
-
-    await prisma.session.create({
-      data: { userId: user.id, tokenHash: refreshTokenHash, userAgent, ipAddress, expiresAt: refreshTokenExpires },
-    });
-
-    // Redirect to frontend with tokens in query params (frontend will save them)
-    const params = new URLSearchParams({
-      accessToken,
-      refreshToken,
-      userId: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    });
-    res.redirect(`${frontendUrl}/auth/google/callback?${params.toString()}`);
+    // The real access/refresh tokens are deliberately NOT issued here — a
+    // redirect URL ends up in browser history and the frontend host's access
+    // logs, and live bearer tokens have no business appearing there. Instead
+    // we redirect with a 60s, single-purpose code (just a userId, not a
+    // capability) and mint the actual tokens only when the frontend exchanges
+    // it server-side, same pattern as the 2FA tempToken flow below.
+    const exchangeCode = jwt.sign(
+      { userId: user.id, purpose: "oauth_exchange" },
+      accessTokenSecret,
+      { expiresIn: "60s" } as SignOptions
+    );
+    res.redirect(`${frontendUrl}/auth/google/callback?code=${encodeURIComponent(exchangeCode)}`);
   } catch {
     res.redirect(`${frontendUrl}/login?error=google_oauth_failed`);
   }
+};
+
+const oauthExchangeSchema = z.object({ code: z.string().min(10) });
+
+export const googleOAuthExchange: RequestHandler = async (req, res) => {
+  const parsed = oauthExchangeSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ errors: parsed.error.format() });
+
+  let payload: { userId: string; purpose: string };
+  try {
+    payload = jwt.verify(parsed.data.code, accessTokenSecret) as { userId: string; purpose: string };
+  } catch {
+    return res.status(401).json({ error: "Sign-in link expired or invalid. Please try again." });
+  }
+  if (payload.purpose !== "oauth_exchange") {
+    return res.status(401).json({ error: "Invalid token purpose" });
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+  if (!user) return res.status(401).json({ error: "Account not found" });
+  if (user.isSuspended) return res.status(403).json({ error: "Account suspended" });
+
+  const accessToken = createAccessToken(user);
+  const refreshToken = createRefreshToken(user);
+  const refreshTokenHash = hashRefreshToken(refreshToken);
+  const refreshTokenExpires = new Date(Date.now() + refreshTokenTtlMs());
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { refreshToken: refreshTokenHash, refreshTokenExpires, loginAttempts: 0, lockedUntil: null },
+  });
+
+  const userAgent = req.headers["user-agent"] ?? null;
+  const ipAddress =
+    (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ??
+    req.socket.remoteAddress ??
+    null;
+
+  await prisma.session.create({
+    data: { userId: user.id, tokenHash: refreshTokenHash, userAgent, ipAddress, expiresAt: refreshTokenExpires },
+  });
+
+  return res.json({
+    accessToken,
+    refreshToken,
+    user: { id: user.id, email: user.email, name: user.name, role: user.role },
+  });
 };
 
 export const login2FA: RequestHandler = async (req, res) => {
@@ -826,7 +889,7 @@ export const login2FA: RequestHandler = async (req, res) => {
 
   const accessToken = createAccessToken(user);
   const refreshToken = createRefreshToken(user);
-  const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+  const refreshTokenHash = hashRefreshToken(refreshToken);
   const refreshTokenExpires = new Date(Date.now() + refreshTokenTtlMs());
 
   await prisma.user.update({

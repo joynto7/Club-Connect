@@ -20,6 +20,7 @@ import {
   login2FA,
   googleOAuthRedirect,
   googleOAuthCallback,
+  googleOAuthExchange,
 } from "../controllers/authController.ts";
 import { authenticateJWT } from "../middleware/authMiddleware.ts";
 
@@ -66,5 +67,6 @@ router.post("/2fa/login",   strictLimiter, login2FA);
 // U12.2 — Google OAuth
 router.get("/google", googleOAuthRedirect);
 router.get("/google/callback", googleOAuthCallback);
+router.post("/google/exchange", authLimiter, googleOAuthExchange);
 
 export default router;
