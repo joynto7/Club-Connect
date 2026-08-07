@@ -1,3 +1,5 @@
+import DOMPurify from "isomorphic-dompurify";
+
 interface Props {
   html: string;
   className?: string;
@@ -8,7 +10,7 @@ export default function RichTextDisplay({ html, className = "" }: Props) {
   return (
     <div
       className={`prose prose-sm dark:prose-invert max-w-none ${className}`}
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }}
     />
   );
 }
