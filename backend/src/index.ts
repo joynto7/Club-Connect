@@ -123,6 +123,11 @@ export const io = new SocketServer(httpServer, {
 if (process.env.REDIS_URL) {
   const pubClient = new Redis(process.env.REDIS_URL);
   const subClient = pubClient.duplicate();
+  // An unhandled 'error' event on an EventEmitter crashes the process — Redis
+  // being briefly unreachable would otherwise take the entire API down with it,
+  // not just Socket.io's cross-instance broadcast.
+  pubClient.on("error", (err) => logger.error("Redis pub client error", { err }));
+  subClient.on("error", (err) => logger.error("Redis sub client error", { err }));
   io.adapter(createAdapter(pubClient, subClient));
   logger.info("Socket.io Redis adapter connected");
 }
