@@ -3,9 +3,8 @@
 import { useRef, useState } from "react";
 import { Upload, X, ImageIcon, Loader2 } from "lucide-react";
 import { getAuthState } from "@/lib/tokenStorage";
+import { API_BASE_URL as API_URL } from "@/lib/axios";
 import { toast } from "sonner";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:5001";
 
 type UploadType = "avatar" | "poster" | "banner" | "logo";
 

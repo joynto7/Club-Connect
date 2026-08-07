@@ -1,4 +1,4 @@
-import { api } from "./axios";
+import { api, API_BASE_URL } from "./axios";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -198,8 +198,7 @@ export async function setReminder(eventId: string, minutesBefore: 1440 | 60 | 15
 }
 
 export function getEventIcsUrl(eventId: string): string {
-  const base = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:5001";
-  return `${base}/events/${eventId}/ics`;
+  return `${API_BASE_URL}/events/${eventId}/ics`;
 }
 
 export function getGoogleCalendarUrl(event: Pick<Event, "title" | "description" | "location" | "startsAt" | "endsAt">): string {

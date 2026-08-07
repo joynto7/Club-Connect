@@ -1,7 +1,5 @@
-import { api } from "./axios";
+import { api, API_BASE_URL as baseURL } from "./axios";
 import { getAuthState } from "./tokenStorage";
-
-const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:5001";
 
 export type ReportType = "MEMBERS" | "ATTENDANCE" | "EVENTS" | "SYSTEM";
 export type ReportFormat = "CSV" | "PDF";

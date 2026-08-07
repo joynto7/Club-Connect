@@ -13,6 +13,7 @@ import {
   resendVerification, changeUnverifiedEmail,
 } from "@/lib/auth";
 import { setAuthState } from "@/lib/tokenStorage";
+import { API_BASE_URL } from "@/lib/axios";
 import { Mail, Lock, Eye, EyeOff, LogIn, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
@@ -280,7 +281,7 @@ export default function LoginPage() {
 
             {/* Google Social Auth */}
             <a
-              href={`${process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:5001"}/auth/google`}
+              href={`${API_BASE_URL}/auth/google`}
               className="w-full py-3.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold rounded-xl transition-colors flex items-center justify-center gap-3 text-sm shadow-sm"
             >
               <svg viewBox="0 0 24 24" className="w-5 h-5">

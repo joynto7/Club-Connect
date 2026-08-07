@@ -97,7 +97,7 @@ export default function NewEventPage() {
     setDescription("");
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:5001";
+      const { API_BASE_URL: apiBase } = await import("@/lib/axios");
       const { getAuthState } = await import("@/lib/tokenStorage");
       const token = getAuthState()?.tokens.accessToken ?? "";
 

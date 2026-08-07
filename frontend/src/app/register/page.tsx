@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { registerUser, getApiErrorMessage } from "@/lib/auth";
+import { API_BASE_URL } from "@/lib/axios";
 import { Mail, Lock, User, Eye, EyeOff, Building2, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import PasswordStrengthIndicator from "@/components/shared/PasswordStrengthIndicator";
@@ -200,7 +201,7 @@ export default function RegisterPage() {
 
         {/* Google Social Auth */}
         <a
-          href={`${process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:5001"}/auth/google`}
+          href={`${API_BASE_URL}/auth/google`}
           className="w-full py-3 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition-colors flex items-center justify-center gap-3 text-sm"
         >
           <svg viewBox="0 0 24 24" className="w-5 h-5">

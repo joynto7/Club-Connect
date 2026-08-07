@@ -53,7 +53,6 @@ services:
       target: production
       args:
         NEXT_PUBLIC_API_BASE_URL: http://localhost:5001
-        NEXT_PUBLIC_API_URL: http://localhost:5001
         NEXT_PUBLIC_SOCKET_URL: http://localhost:5001
     restart: unless-stopped
     depends_on:

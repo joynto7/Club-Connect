@@ -59,7 +59,6 @@ jobs:
         env:
           # Provide placeholder values so Next.js build doesn't fail
           NEXT_PUBLIC_API_BASE_URL: https://api.placeholder.com
-          NEXT_PUBLIC_API_URL: https://api.placeholder.com
           NEXT_PUBLIC_SOCKET_URL: https://api.placeholder.com
 
   # ── 3. Deploy (only on push to main, after both checks pass) ───────────────
@@ -93,9 +92,6 @@ jobs:
         run: |
           npm install -g vercel@latest
           vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-          echo "--- DEBUG: pulled NEXT_PUBLIC_* vars (not secret, these ship in the client bundle) ---"
-          grep -E "^NEXT_PUBLIC_(API|SOCKET)" .vercel/.env.production.local || echo "(no matching lines found)"
-          echo "--- END DEBUG ---"
           vercel build --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
           vercel deploy --prebuilt --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
         working-directory: frontend
