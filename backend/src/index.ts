@@ -31,6 +31,7 @@ import integrationRoutes from "./routes/integrations.ts";
 import swaggerSpec from "./lib/swagger.ts";
 import { logger } from "./lib/logger.ts";
 import { accessTokenSecret } from "./lib/jwtSecrets.ts";
+import { rejectNullBytes } from "./middleware/rejectNullBytes.ts";
 import { seedAchievements } from "./services/achievementService.ts";
 import { startReminderJob } from "./jobs/reminderJob.ts";
 import prisma from "./prisma.ts";
@@ -59,6 +60,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 
 app.use("/payments", paymentRoutes);
 app.use(express.json({ limit: "10mb" }));
+app.use(rejectNullBytes);
 app.use("/uploads", express.static(path.join(__dirname, "../../public/uploads")));
 
 // ── Routes ────────────────────────────────────────────────────────────────────
