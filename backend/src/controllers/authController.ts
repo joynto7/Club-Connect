@@ -10,6 +10,7 @@ import prisma from "../prisma.ts";
 import { logger } from "../lib/logger.ts";
 import { accessTokenSecret, refreshTokenSecret } from "../lib/jwtSecrets.ts";
 import { hashRefreshToken, verifyRefreshToken } from "../lib/refreshTokenHash.ts";
+import { escapeHtml } from "../lib/textHelpers.ts";
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
@@ -163,7 +164,7 @@ export const register: RequestHandler = async (req, res) => {
   void sendEmail(
     email,
     "Verify your Club Connect email",
-    `<p>Hi ${name},</p><p>Your verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${emailVerificationToken}</p><p>This code expires in 15 minutes.</p>`
+    `<p>Hi ${escapeHtml(name)},</p><p>Your verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${emailVerificationToken}</p><p>This code expires in 15 minutes.</p>`
   );
 
   return res.status(201).json({
@@ -233,7 +234,7 @@ export const resendVerification: RequestHandler = async (req, res) => {
   void sendEmail(
     user.email,
     "Verify your Club Connect email",
-    `<p>Hi ${user.name},</p><p>Your verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${emailVerificationToken}</p><p>This code expires in 15 minutes.</p>`
+    `<p>Hi ${escapeHtml(user.name)},</p><p>Your verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${emailVerificationToken}</p><p>This code expires in 15 minutes.</p>`
   );
 
   return res.json({ message: "If the email is registered and unverified, a new verification code has been sent." });
@@ -304,7 +305,7 @@ export const changeUnverifiedEmail: RequestHandler = async (req, res) => {
   void sendEmail(
     newEmail,
     "Verify your Club Connect email",
-    `<p>Hi ${user.name},</p><p>Your verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${emailVerificationToken}</p><p>This code expires in 15 minutes.</p>`
+    `<p>Hi ${escapeHtml(user.name)},</p><p>Your verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${emailVerificationToken}</p><p>This code expires in 15 minutes.</p>`
   );
 
   return res.json({ message: "Email updated. Please check your new inbox to verify your account." });
@@ -512,7 +513,7 @@ export const requestPasswordReset: RequestHandler = async (req, res) => {
   void sendEmail(
     user.email,
     "Club Connect password reset",
-    `<p>Hi ${user.name},</p><p>Reset your password by clicking the link below:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>The link is valid for one hour.</p>`
+    `<p>Hi ${escapeHtml(user.name)},</p><p>Reset your password by clicking the link below:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>The link is valid for one hour.</p>`
   );
 
   return res.json({ message: "If the email is registered, a reset link will be sent." });

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { generateSlug, buildCsvRows, sanitizeFilename } from "../textHelpers.ts";
+import { generateSlug, buildCsvRows, sanitizeFilename, escapeHtml } from "../textHelpers.ts";
 
 test("generateSlug — lowercases and hyphenates", () => {
   assert.equal(generateSlug("Chess Club"), "chess-club");
@@ -44,4 +44,16 @@ test("sanitizeFilename — strips characters unsafe for Content-Disposition", ()
 
 test("sanitizeFilename — collapses spaces to underscores", () => {
   assert.equal(sanitizeFilename("Members Report 2026"), "Members_Report_2026");
+});
+
+test("escapeHtml — escapes script tags", () => {
+  assert.equal(escapeHtml("<script>alert(1)</script>"), "&lt;script&gt;alert(1)&lt;/script&gt;");
+});
+
+test("escapeHtml — escapes quotes and ampersands", () => {
+  assert.equal(escapeHtml(`Tom & "Jerry"'s`), "Tom &amp; &quot;Jerry&quot;&#39;s");
+});
+
+test("escapeHtml — plain text passes through unchanged", () => {
+  assert.equal(escapeHtml("Jane Doe"), "Jane Doe");
 });
