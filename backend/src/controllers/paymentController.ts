@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import SSLCommerzPayment from "sslcommerz-lts";
 import prisma from "../prisma.ts";
 import { createNotification } from "../services/notificationService.ts";
+import { isClubOfficer } from "../lib/clubAuth.ts";
 
 const storeId = process.env.SSLCOMMERZ_STORE_ID ?? "";
 const storePassword = process.env.SSLCOMMERZ_STORE_PASSWORD ?? "";
@@ -238,7 +239,11 @@ export const getMyPayments: RequestHandler = async (req, res) => {
 
 // GET /clubs/:id/budget
 export const getClubBudget: RequestHandler = async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not authenticated" });
   const clubId = req.params["id"] as string;
+
+  const officer = await isClubOfficer(req.user.id, req.user.role, clubId);
+  if (!officer) return res.status(403).json({ error: "Only club officers can view the budget" });
 
   let budget = await prisma.clubBudget.findUnique({
     where: { clubId },
@@ -278,8 +283,12 @@ export const getClubBudget: RequestHandler = async (req, res) => {
 
 // POST /clubs/:id/budget/transactions
 export const addBudgetTransaction: RequestHandler = async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not authenticated" });
   const clubId = req.params["id"] as string;
-  const userId = req.user!.id;
+  const userId = req.user.id;
+
+  const officer = await isClubOfficer(userId, req.user.role, clubId);
+  if (!officer) return res.status(403).json({ error: "Only club officers can add budget transactions" });
 
   const { description, amount, type, receiptUrl } = req.body as {
     description: string;
@@ -321,9 +330,19 @@ export const addBudgetTransaction: RequestHandler = async (req, res) => {
 
 // DELETE /clubs/:id/budget/transactions/:txId
 export const deleteBudgetTransaction: RequestHandler = async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "Not authenticated" });
+  const clubId = req.params["id"] as string;
   const txId = req.params["txId"] as string;
 
-  const tx = await prisma.budgetTransaction.findUnique({ where: { id: txId } });
+  const officer = await isClubOfficer(req.user.id, req.user.role, clubId);
+  if (!officer) return res.status(403).json({ error: "Only club officers can delete budget transactions" });
+
+  // Scoped through the budget's clubId, not just the bare txId — otherwise an
+  // officer of one club could pass a txId belonging to a different club's
+  // budget and it would still resolve.
+  const tx = await prisma.budgetTransaction.findFirst({
+    where: { id: txId, budget: { clubId } },
+  });
   if (!tx) return res.status(404).json({ error: "Transaction not found." });
 
   await prisma.budgetTransaction.delete({ where: { id: txId } });
