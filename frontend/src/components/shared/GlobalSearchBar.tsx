@@ -81,12 +81,14 @@ export default function GlobalSearchBar() {
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => { if (results) setOpen(true); }}
           placeholder="Search..."
+          aria-label="Search clubs, events, and announcements"
           className="w-full pl-8 pr-7 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EBA814]/40 focus:border-[#EBA814] placeholder:text-gray-400 transition-all"
         />
         {query && (
           <button
             type="button"
             onClick={clearQuery}
+            aria-label="Clear search"
             className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
           >
             <X size={13} />

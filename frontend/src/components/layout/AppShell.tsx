@@ -295,6 +295,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <button
               onClick={toggleCollapsed}
               title="Expand sidebar"
+              aria-label="Expand sidebar"
               className="p-1.5 rounded-lg text-gray-400 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
             >
               <PanelLeftOpen size={16} />
@@ -308,6 +309,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <button
                 onClick={toggleCollapsed}
                 title="Collapse sidebar"
+                aria-label="Collapse sidebar"
                 className="p-1.5 rounded-lg text-gray-400 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
               >
                 <PanelLeftClose size={16} />
@@ -322,6 +324,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <button
                 onClick={logout}
                 title="Logout"
+                aria-label="Logout"
                 className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
               >
                 <LogOut size={16} />

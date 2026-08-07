@@ -226,10 +226,11 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {/* Email Input */}
               <div>
-                <label className="block text-sm font-bold text-gray-800 mb-2">Email Address</label>
+                <label htmlFor="login-email" className="block text-sm font-bold text-gray-800 mb-2">Email Address</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} strokeWidth={1.5} />
                   <input
+                    id="login-email"
                     {...register("email")}
                     placeholder="Enter your email"
                     className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-sm outline-none transition-colors focus:border-[#EBA814] focus:ring-1 focus:ring-[#EBA814] placeholder:text-gray-400 font-medium"
@@ -241,7 +242,7 @@ export default function LoginPage() {
               {/* Password Input */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-bold text-gray-800">Password</label>
+                  <label htmlFor="login-password" className="block text-sm font-bold text-gray-800">Password</label>
                   <Link href="/forgot-password" className="text-xs font-semibold text-[#EBA814] hover:underline">
                     Forgot Password?
                   </Link>
@@ -249,12 +250,13 @@ export default function LoginPage() {
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} strokeWidth={1.5} />
                   <input
+                    id="login-password"
                     type={showPassword ? "text" : "password"}
                     {...register("password")}
                     placeholder="Enter your password"
                     className="w-full pl-12 pr-12 py-3.5 bg-white border border-gray-200 rounded-xl text-sm outline-none transition-colors focus:border-[#EBA814] focus:ring-1 focus:ring-[#EBA814] placeholder:text-gray-400 font-medium"
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
                     {showPassword ? <EyeOff size={20} strokeWidth={1.5} /> : <Eye size={20} strokeWidth={1.5} />}
                   </button>
                 </div>
