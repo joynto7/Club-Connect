@@ -1,6 +1,7 @@
 import axios from "axios";
 import { getAuthState, setAuthState, clearAuthState } from "./tokenStorage";
 
+// Read fresh at build time — do not let a stale build cache reuse an old value here.
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:5001";
 
